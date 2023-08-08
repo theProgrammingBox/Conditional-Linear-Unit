@@ -56,7 +56,7 @@ float RandomGaussian(float mean, float stddev)
 	return (mean + y1 * stddev);
 }
 
-bool cpuSgemmStridedBatched(
+void cpuSgemmStridedBatched(
 	bool transB, bool transA,
 	int CCols, int CRows, int AColsBRows,
 	const float* alpha,
@@ -66,7 +66,6 @@ bool cpuSgemmStridedBatched(
 	float* C, int ColsC, int SizeC,
 	int batchCount)
 {
-	if (CCols * CRows != SizeC) return false;
 	for (int b = batchCount; b--;)
 	{
 		for (int m = CCols; m--;)
@@ -76,14 +75,10 @@ bool cpuSgemmStridedBatched(
 				float sum = 0;
 				for (int k = AColsBRows; k--;)
 				{
-					if (transA ? k * ColsA + n >= SizeA : n * ColsA + k >= SizeA) return false;
-					if (transB ? m * ColsB + k >= SizeB : k * ColsB + m >= SizeB) return false;
 					float a_value = transA ? A[k * ColsA + n] : A[n * ColsA + k];
 					float b_value = transB ? B[m * ColsB + k] : B[k * ColsB + m];
 					sum += a_value * b_value;
 				}
-				if (n * ColsC + m >= SizeC) return false;
-				if (sum <= 0 || sum > 1000) return false;
 				C[n * ColsC + m] = *alpha * sum + *beta * C[n * ColsC + m];
 			}
 		}
@@ -91,15 +86,19 @@ bool cpuSgemmStridedBatched(
 		B += SizeB;
 		C += SizeC;
 	}
-	printf("6 params: %d %d %d %d %d %d\n", CCols, CRows, AColsBRows, ColsB, ColsA, ColsC);
-	return true;
 }
 
 void simpleGEMM(
-	bool transA, bool transB, bool transC,
-	int outWidth, int inHeight, int shared,
-	float* A, float* B, float* C,
-	int batchCount
+	bool transA,		// is the input matrix transposed
+	bool transB,		// is the weight matrix transposed
+	bool transC,		// is the output matrix transposed
+	int inHeight,		// the height of output matrix after the operation
+	int outWidth,		// the width of output matrix after the operation	
+	int shared,			// the leftover dimension
+	int batchCount,		// the number of sequantial matrices to process
+	float* X,			// the X in Y = X * W
+	float* W,			// the W in Y = X * W
+	float* Y			// the Y in Y = X * W
 )
 {
 	const float alpha = 1.0f;
@@ -111,10 +110,10 @@ void simpleGEMM(
 			transB, transA,
 			inHeight, outWidth, shared,
 			&alpha,
-			A, transA ? inHeight : shared, shared * inHeight,
-			B, transB ? shared : outWidth, shared * outWidth,
+			X, shared, shared * inHeight,
+			W, outWidth, shared * outWidth,
 			&beta,
-			C, inHeight, inHeight * outWidth,
+			Y, inHeight, inHeight * outWidth,
 			batchCount
 		);
 	}
@@ -124,10 +123,10 @@ void simpleGEMM(
 			transB, transA,
 			outWidth, inHeight, shared,
 			&alpha,
-			B, transB ? shared : outWidth, shared * outWidth,
-			A, transA ? inHeight : shared, inHeight * shared,
+			W, outWidth, shared * outWidth,
+			X, shared, inHeight * shared,
 			&beta,
-			C, outWidth, inHeight * outWidth,
+			Y, outWidth, inHeight * outWidth,
 			batchCount
 		);
 	}

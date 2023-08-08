@@ -40,40 +40,13 @@ int main()
 	PrintMatrixf32(X.data(), ins, shared, "X");
 	PrintMatrixf32(W.data(), shared, outs, "W");
 
-	std::vector<std::vector<int>> primary = {
-		{ins, shared, outs},
-		{ins, outs, shared},
-		{shared, ins, outs},
-		{shared, outs, ins},
-		{outs, ins, shared},
-		{outs, shared, ins}
-	};
+	simpleGEMM(
+		false, false, false,
+		ins, outs, shared, 1,
+		X.data(), W.data(), Y.data()
+	);
 
-	for (const auto& p : primary)
-	{
-		for (int i = 0; i < 2; ++i)
-		{
-			for (int j = 0; j < 2; ++j)
-			{
-				for (int k = 0; k < 2; ++k)
-				{
-					memset(Y.data(), 0, Y.size() * sizeof(float));
-					bool valid = cpuSgemmStridedBatched(
-						true, true,
-						p[0], p[1], p[2],
-						&one,
-						X.data(), (j == 0 ? ins : shared), ins * shared,
-						W.data(), (i == 0 ? shared : outs), shared * outs,
-						&zero,
-						Y.data(), (k == 0 ? ins : outs), ins * outs,
-						1
-					);
-					if (valid)
-						PrintMatrixf32(Y.data(), ins, outs, "Y");
-				}
-			}
-		}
-	}
+	PrintMatrixf32(Y.data(), ins, outs, "Y");
 
 	return 0;
 }
