@@ -56,7 +56,7 @@ float RandomGaussian(float mean, float stddev)
 	return (mean + y1 * stddev);
 }
 
-void cpuSgemmStridedBatched(
+bool cpuSgemmStridedBatched(
 	bool transB, bool transA,
 	int CCols, int CRows, int AColsBRows,
 	const float* alpha,
@@ -66,23 +66,70 @@ void cpuSgemmStridedBatched(
 	float* C, int ColsC, int SizeC,
 	int batchCount)
 {
+	if (CCols * CRows != SizeC) return false;
 	for (int b = batchCount; b--;)
 	{
 		for (int m = CCols; m--;)
+		{
 			for (int n = CRows; n--;)
 			{
 				float sum = 0;
 				for (int k = AColsBRows; k--;)
 				{
+					if (transA ? k * ColsA + n >= SizeA : n * ColsA + k >= SizeA) return false;
+					if (transB ? m * ColsB + k >= SizeB : k * ColsB + m >= SizeB) return false;
 					float a_value = transA ? A[k * ColsA + n] : A[n * ColsA + k];
 					float b_value = transB ? B[m * ColsB + k] : B[k * ColsB + m];
 					sum += a_value * b_value;
 				}
+				if (n * ColsC + m >= SizeC) return false;
+				if (sum <= 0 || sum > 1000) return false;
 				C[n * ColsC + m] = *alpha * sum + *beta * C[n * ColsC + m];
 			}
+		}
 		A += SizeA;
 		B += SizeB;
 		C += SizeC;
+	}
+	printf("6 params: %d %d %d %d %d %d\n", CCols, CRows, AColsBRows, ColsB, ColsA, ColsC);
+	return true;
+}
+
+void simpleGEMM(
+	bool transA, bool transB, bool transC,
+	int outWidth, int inHeight, int shared,
+	float* A, float* B, float* C,
+	int batchCount
+)
+{
+	const float alpha = 1.0f;
+	const float beta = 0.0f;
+	// assert total size is the same as user input
+	if (transC)
+	{
+		cpuSgemmStridedBatched(
+			transB, transA,
+			inHeight, outWidth, shared,
+			&alpha,
+			A, transA ? inHeight : shared, shared * inHeight,
+			B, transB ? shared : outWidth, shared * outWidth,
+			&beta,
+			C, inHeight, inHeight * outWidth,
+			batchCount
+		);
+	}
+	else
+	{
+		cpuSgemmStridedBatched(
+			transB, transA,
+			outWidth, inHeight, shared,
+			&alpha,
+			B, transB ? shared : outWidth, shared * outWidth,
+			A, transA ? inHeight : shared, inHeight * shared,
+			&beta,
+			C, outWidth, inHeight * outWidth,
+			batchCount
+		);
 	}
 }
 
