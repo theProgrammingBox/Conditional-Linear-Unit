@@ -10,7 +10,7 @@ float InvSqrt(float number)
 	return tmp * 0.703952253f * (2.38924456f - number * tmp * tmp);
 }
 
-void PrintMatrixf32(float* arr, uint32_t width, uint32_t height, const char* label)
+void PrintMatrixf32(float* arr, uint32_t height, uint32_t width, const char* label)
 {
 	printf("%s:\n", label);
 	for (uint32_t i = 0; i < height; i++)
@@ -73,7 +73,11 @@ void cpuSgemmStridedBatched(
 			{
 				float sum = 0;
 				for (int k = AColsBRows; k--;)
-					sum += (transA ? A[k * ColsA + n] : A[n * ColsA + k]) * (transB ? B[m * ColsB + k] : B[k * ColsB + m]);
+				{
+					float a_value = transA ? A[k * ColsA + n] : A[n * ColsA + k];
+					float b_value = transB ? B[m * ColsB + k] : B[k * ColsB + m];
+					sum += a_value * b_value;
+				}
 				C[n * ColsC + m] = *alpha * sum + *beta * C[n * ColsC + m];
 			}
 		A += SizeA;
