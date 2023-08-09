@@ -66,8 +66,8 @@ struct CLU
 
 	void forward()
 	{
-		PrintTensorf32(inWidth, *inHeight, input, "input");
-		PrintTensorf32(productWidth, inWidth, weight, "weight");
+		//PrintTensorf32(inWidth, *inHeight, input, "input");
+		//PrintTensorf32(productWidth, inWidth, weight, "weight");
 
 		cpuSgemmStridedBatched
 		(
@@ -123,7 +123,7 @@ struct CLU
 			*inHeight
 		);
 
-		PrintTensorf32(outWidth, hiddenHeight, output, "output", 0, outWidth, *inHeight);
+		//PrintTensorf32(outputSize, *inHeight, output, "output");
 	}
 
 	void backward(float learningrate)
@@ -158,12 +158,13 @@ struct CLU
 		//PrintTensorf32(productWidth, *inHeight, productGrad, "productGrad");
 
 		// add to bias
+		float alpha = learningrate * invSqrtInHeight;
 		for (int i = 0; i < *inHeight; ++i)
 		{
 			cpuSaxpy
 			(
 				productWidth,
-				&learningrate,
+				&alpha,
 				productGrad + i * productWidth, 1,
 				bias, 1
 			);
@@ -182,7 +183,6 @@ struct CLU
 		);
 
 		//PrintTensorf32(inWidth, *inHeight, inputGrad, "inputGrad");
-		float alpha = invSqrtInHeight * learningrate;
 		cpuSgemmStridedBatched
 		(
 			false, true,
@@ -204,20 +204,27 @@ int main()
 	srand(time(NULL));
 
 	float learningrate = 0.1f;
-	int inHeight = 6, inWidth = 5, hiddenWidth = 2, hiddenHeight = 3, outWidth = 4;
+	int inHeight = 1024, inWidth = 2, hiddenWidth = 4, hiddenHeight = 1, outWidth = 2;
 	float* input = new float[inWidth * inHeight];
-	float* outputGrad = new float[outWidth * hiddenHeight * inHeight];
+	float* outputGrad = new float[outWidth * inHeight];
+	float errSclalar = InvSqrt(outWidth * inHeight);
 
-	for (int epoch = 0; epoch < 100; ++epoch)
+	CLU clu(input, &inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, outputGrad);
+
+	for (int epoch = 0; epoch < 10; ++epoch)
 	{
 		for (int i = 0; i < inWidth * inHeight; ++i)
 			input[i] = RandomFloat();
 
-		CLU clu(input, &inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, outputGrad);
 		clu.forward();
 
-		for (int i = 0; i < outWidth * hiddenHeight * inHeight; ++i)
-			outputGrad[i] = input[i % inWidth];
+		float err = 0;
+		for (int i = 0; i < outWidth * inHeight; ++i)
+		{
+			outputGrad[i] = input[i] - clu.output[i];
+			err += outputGrad[i] * outputGrad[i];
+		}
+		printf("err: %f\n", err * errSclalar);
 
 		clu.backward(learningrate);
 	}
