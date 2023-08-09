@@ -81,8 +81,8 @@ struct CLU
 			1
 		);
 
-		PrintTensorf32(productWidth, *inHeight, product, "product");
-		PrintTensorf32(productWidth, 1, bias, "bias");
+		//PrintTensorf32(productWidth, *inHeight, product, "product");
+		//PrintTensorf32(productWidth, 1, bias, "bias");
 
 		for (int i = 0; i < *inHeight; ++i)
 		{
@@ -95,7 +95,7 @@ struct CLU
 			);
 		}
 
-		PrintTensorf32(productWidth, *inHeight, product, "added bias");
+		//PrintTensorf32(productWidth, *inHeight, product, "added bias");
 		for (int i = 0; i < *inHeight; ++i)
 		{
 			cpuBinaryForward
@@ -108,9 +108,9 @@ struct CLU
 			);
 		}
 
-		PrintTensorf32(productWidth, *inHeight, product, "full product tensor");
-		PrintTensorf32(hiddenWidth, hiddenHeight, product, "binary forward", 0, productWidth, *inHeight);
-		PrintTensorf32(outWidth, hiddenWidth, product + hiddenSize, "Linear forward", 0, productWidth, *inHeight);
+		//PrintTensorf32(productWidth, *inHeight, product, "full product tensor");
+		//PrintTensorf32(hiddenWidth, hiddenHeight, product, "binary forward", 0, productWidth, *inHeight);
+		//PrintTensorf32(outWidth, hiddenWidth, product + hiddenSize, "Linear forward", 0, productWidth, *inHeight);
 		cpuSgemmStridedBatched
 		(
 			false, false,
@@ -128,7 +128,7 @@ struct CLU
 
 	void backward(float learningrate)
 	{
-		PrintTensorf32(outWidth, hiddenHeight, outputGrad, "outputGrad", 0, outWidth, *inHeight);
+		//PrintTensorf32(outWidth, hiddenHeight, outputGrad, "outputGrad", 0, outWidth, *inHeight);
 		cpuSgemmStridedBatched
 		(
 			true, false,
@@ -141,7 +141,7 @@ struct CLU
 			*inHeight
 		);
 
-		PrintTensorf32(hiddenWidth, hiddenHeight, productGrad, "binaryGrad", 0, productWidth, *inHeight);
+		//PrintTensorf32(hiddenWidth, hiddenHeight, productGrad, "binaryGrad", 0, productWidth, *inHeight);
 		cpuSgemmStridedBatched
 		(
 			false, true,
@@ -154,8 +154,8 @@ struct CLU
 			*inHeight
 		);
 
-		PrintTensorf32(outWidth, hiddenWidth, productGrad + hiddenSize, "linearGrad", 0, productWidth, *inHeight);
-		PrintTensorf32(productWidth, *inHeight, productGrad, "productGrad");
+		//PrintTensorf32(outWidth, hiddenWidth, productGrad + hiddenSize, "linearGrad", 0, productWidth, *inHeight);
+		//PrintTensorf32(productWidth, *inHeight, productGrad, "productGrad");
 
 		// add to bias
 		for (int i = 0; i < *inHeight; ++i)
@@ -181,7 +181,7 @@ struct CLU
 			1
 		);
 
-		PrintTensorf32(inWidth, *inHeight, inputGrad, "inputGrad");
+		//PrintTensorf32(inWidth, *inHeight, inputGrad, "inputGrad");
 		float alpha = invSqrtInHeight * learningrate;
 		cpuSgemmStridedBatched
 		(
@@ -195,7 +195,7 @@ struct CLU
 			1
 		);
 
-		PrintTensorf32(productWidth, inWidth, weight, "weight");
+		//PrintTensorf32(productWidth, inWidth, weight, "weight");
 	}
 };
 
@@ -208,16 +208,19 @@ int main()
 	float* input = new float[inWidth * inHeight];
 	float* outputGrad = new float[outWidth * hiddenHeight * inHeight];
 
-	for (int i = 0; i < inWidth * inHeight; ++i)
-		input[i] = RandomFloat();
+	for (int epoch = 0; epoch < 100; ++epoch)
+	{
+		for (int i = 0; i < inWidth * inHeight; ++i)
+			input[i] = RandomFloat();
 
-	CLU clu(input, &inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, outputGrad);
-	clu.forward();
+		CLU clu(input, &inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, outputGrad);
+		clu.forward();
 
-	for (int i = 0; i < outWidth * hiddenHeight * inHeight; ++i)
-		outputGrad[i] = input[i % inWidth];
+		for (int i = 0; i < outWidth * hiddenHeight * inHeight; ++i)
+			outputGrad[i] = input[i % inWidth];
 
-	clu.backward(learningrate);
+		clu.backward(learningrate);
+	}
 
 	return 0;
 }
