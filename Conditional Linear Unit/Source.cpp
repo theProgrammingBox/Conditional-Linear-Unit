@@ -2,6 +2,7 @@
 
 /*
 TODO:
+- add adam optimizer
 - add multiple "heads"
 - make inHeight dynamic by calculating the max it can allocate and ensure it is not exceeded
 - see if you can make cpuSaxpy and cpuBinaryForward like cpuSgemmStridedBatched
@@ -197,6 +198,20 @@ struct CLU
 
 		//PrintTensorf32(productWidth, inWidth, weight, "weight");
 	}
+
+	void printParameters() const
+	{
+		PrintTensorf32(productWidth, inWidth, weight, "weight");
+		PrintTensorf32(productWidth, 1, bias, "bias");
+	}
+
+	void printWork() const
+	{
+		PrintTensorf32(inWidth, *inHeight, input, "input");
+		PrintTensorf32(hiddenWidth, hiddenHeight, product, "binary forward", 0, productWidth, *inHeight);
+		PrintTensorf32(outWidth, hiddenWidth, product + hiddenSize, "Linear forward", 0, productWidth, *inHeight);
+		PrintTensorf32(outputSize, *inHeight, output, "output");
+	}
 };
 
 int main()
@@ -204,14 +219,14 @@ int main()
 	srand(time(NULL));
 
 	float learningrate = 0.1f;
-	int inHeight = 1024, inWidth = 2, hiddenWidth = 4, hiddenHeight = 1, outWidth = 2;
+	int inHeight = 32, inWidth = 2, hiddenWidth = 4, hiddenHeight = 1, outWidth = 2;
 	float* input = new float[inWidth * inHeight];
 	float* outputGrad = new float[outWidth * inHeight];
 	float errSclalar = InvSqrt(outWidth * inHeight);
 
 	CLU clu(input, &inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, outputGrad);
 
-	for (int epoch = 0; epoch < 10; ++epoch)
+	for (int epoch = 0; epoch < 100; ++epoch)
 	{
 		for (int i = 0; i < inWidth * inHeight; ++i)
 			input[i] = RandomFloat();
@@ -224,10 +239,14 @@ int main()
 			outputGrad[i] = input[i] - clu.output[i];
 			err += outputGrad[i] * outputGrad[i];
 		}
-		printf("err: %f\n", err * errSclalar);
 
 		clu.backward(learningrate);
+		printf("err: %f\n", err * errSclalar);
 	}
+	printf("\n");
+
+	clu.printParameters();
+	clu.printWork();
 
 	return 0;
 }
