@@ -21,6 +21,8 @@ IMPORTANT LESSONS:
 ------		Y, d1, d1 * d2,
 ------		n
 ------ )
+
+---- make a matmul given 2 matrix dim and figuew out the rest
 */
 
 int main()
@@ -41,12 +43,12 @@ int main()
 	PrintMatrixf32(W.data(), shared, outs, "W");
 
 	simpleGEMM(
-		false, false, false,
+		true, true, true,
 		ins, outs, shared, 1,
-		X.data(), W.data(), Y.data()
+		Y.data(), X.data(), W.data()
 	);
 
-	PrintMatrixf32(Y.data(), ins, outs, "Y");
+	PrintMatrixf32(Y.data(), outs, ins, "Y");
 
 	return 0;
 }

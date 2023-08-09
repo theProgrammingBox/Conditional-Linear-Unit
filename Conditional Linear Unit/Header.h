@@ -57,34 +57,36 @@ float RandomGaussian(float mean, float stddev)
 }
 
 void cpuSgemmStridedBatched(
-	bool transB, bool transA,
-	int CCols, int CRows, int AColsBRows,
+	bool transW, bool transX,
+	// determines the length of dot products
+	int outWidth, int inHeight, int sharedDim,
 	const float* alpha,
-	float* B, int ColsB, int SizeB,
-	float* A, int ColsA, int SizeA,
+	// determines the number of elements to skip to get to the next row/column and matrix
+	float* W, int WMajorStride, int WMatrixStride,
+	float* X, int XMajorStride, int XMatrixStride,
 	const float* beta,
-	float* C, int ColsC, int SizeC,
+	float* Y, int YMajorStride, int YMatrixStride,
 	int batchCount)
 {
 	for (int b = batchCount; b--;)
 	{
-		for (int m = CCols; m--;)
+		for (int m = outWidth; m--;)
 		{
-			for (int n = CRows; n--;)
+			for (int n = inHeight; n--;)
 			{
 				float sum = 0;
-				for (int k = AColsBRows; k--;)
+				for (int k = sharedDim; k--;)
 				{
-					float a_value = transA ? A[k * ColsA + n] : A[n * ColsA + k];
-					float b_value = transB ? B[m * ColsB + k] : B[k * ColsB + m];
+					float a_value = transX ? X[k * XMajorStride + n] : X[n * XMajorStride + k];
+					float b_value = transW ? W[m * WMajorStride + k] : W[k * WMajorStride + m];
 					sum += a_value * b_value;
 				}
-				C[n * ColsC + m] = *alpha * sum + *beta * C[n * ColsC + m];
+				Y[n * YMajorStride + m] = *alpha * sum + *beta * Y[n * YMajorStride + m];
 			}
 		}
-		A += SizeA;
-		B += SizeB;
-		C += SizeC;
+		X += XMatrixStride;
+		W += WMatrixStride;
+		Y += YMatrixStride;
 	}
 }
 
@@ -94,24 +96,30 @@ void simpleGEMM(
 	bool transC,		// is the output matrix transposed
 	int inHeight,		// the height of output matrix after the operation
 	int outWidth,		// the width of output matrix after the operation	
-	int shared,			// the leftover dimension
+	int sharedDim,			// the leftover dimension
 	int batchCount,		// the number of sequantial matrices to process
+	float* Y,			// the Y in Y = X * W
 	float* X,			// the X in Y = X * W
-	float* W,			// the W in Y = X * W
-	float* Y			// the Y in Y = X * W
+	float* W			// the W in Y = X * W
 )
 {
 	const float alpha = 1.0f;
 	const float beta = 0.0f;
+	// need an easier way to deel with dimensions
 	// assert total size is the same as user input
+
+	// the problem with this approach is that determining the size of the matrix outside of the function is a pain
+	// this is more like a reverse solver, given y's details, solve for x and w like a sudoku puzzle
+	//if transC, flip x and w. also transpose them. also, the dim of x, w, and y is flipped
 	if (transC)
 	{
 		cpuSgemmStridedBatched(
 			transB, transA,
-			inHeight, outWidth, shared,
+			outWidth, inHeight, sharedDim,
 			&alpha,
-			X, shared, shared * inHeight,
-			W, outWidth, shared * outWidth,
+			// supposed to be !trans cuz trans ^ transC, but just flipped the order
+			X, transA ? sharedDim : inHeight, sharedDim * inHeight,
+			W, transB ? outWidth : sharedDim, sharedDim * outWidth,
 			&beta,
 			Y, inHeight, inHeight * outWidth,
 			batchCount
@@ -121,10 +129,10 @@ void simpleGEMM(
 	{
 		cpuSgemmStridedBatched(
 			transB, transA,
-			outWidth, inHeight, shared,
+			outWidth, inHeight, sharedDim,
 			&alpha,
-			W, outWidth, shared * outWidth,
-			X, shared, inHeight * shared,
+			W, transB ? sharedDim : outWidth, sharedDim * outWidth,
+			X, transA ? inHeight : sharedDim, inHeight * sharedDim,
 			&beta,
 			Y, outWidth, inHeight * outWidth,
 			batchCount
