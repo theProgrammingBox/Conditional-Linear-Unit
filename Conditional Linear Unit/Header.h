@@ -117,6 +117,20 @@ void cpuBinaryForward(
 		y[i] = *beta * y[i] + *alpha * x[i] > 0;
 }
 
+void cpuBinaryBackward(
+	int n,
+	const float* alpha,
+	const float* y,
+	const float* dy,
+	const float* x,
+	const float* beta,
+	float* dx)
+{
+
+	for (int i = 0; i < n; i++)
+		dx[i] = *beta * dx[i] + *alpha * dy[i] * ((dy[i] < 0 && y[i] == 1) || (dy[i] > 0 && y[i] == 0));
+}
+
 void cpuReluForward(
 	int n,
 	const float* alpha,

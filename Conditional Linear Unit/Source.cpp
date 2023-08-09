@@ -2,6 +2,7 @@
 
 /*
 TODO:
+- add binary backward or make leaky linear cuz it can get stuck
 - add adam optimizer
 - add multiple "heads"
 - make inHeight dynamic by calculating the max it can allocate and ensure it is not exceeded
@@ -171,6 +172,22 @@ struct CLU
 			);
 		}
 
+		// binary backward
+		for (int i = 0; i < *inHeight; ++i)
+		{
+			cpuBinaryBackward
+			(
+				hiddenSize,
+				&one,
+				product + i * productWidth,
+				productGrad + i * productWidth,
+				product + i * productWidth,
+				&zero,
+				productGrad + i * productWidth
+			);
+		}
+
+		//PrintTensorf32(productWidth, *inHeight, productGrad, "binaryGrad");
 		cpuSgemmStridedBatched
 		(
 			true, false,
@@ -218,7 +235,7 @@ int main()
 {
 	srand(time(NULL));
 
-	float learningrate = 0.1f;
+	float learningrate = 1.0f;
 	int inHeight = 32, inWidth = 2, hiddenWidth = 4, hiddenHeight = 1, outWidth = 2;
 	float* input = new float[inWidth * inHeight];
 	float* outputGrad = new float[outWidth * inHeight];
@@ -226,7 +243,7 @@ int main()
 
 	CLU clu(input, &inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, outputGrad);
 
-	for (int epoch = 0; epoch < 100; ++epoch)
+	for (int epoch = 0; epoch < 1000; ++epoch)
 	{
 		for (int i = 0; i < inWidth * inHeight; ++i)
 			input[i] = RandomFloat();
@@ -236,7 +253,7 @@ int main()
 		float err = 0;
 		for (int i = 0; i < outWidth * inHeight; ++i)
 		{
-			outputGrad[i] = input[i] - clu.output[i];
+			outputGrad[i] = (1 - input[i]) - clu.output[i];
 			err += outputGrad[i] * outputGrad[i];
 		}
 
@@ -246,7 +263,7 @@ int main()
 	printf("\n");
 
 	clu.printParameters();
-	clu.printWork();
+	//clu.printWork();
 
 	return 0;
 }
