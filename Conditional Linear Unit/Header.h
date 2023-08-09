@@ -10,16 +10,22 @@ float InvSqrt(float number)
 	return tmp * 0.703952253f * (2.38924456f - number * tmp * tmp);
 }
 
-void PrintMatrixf32(float* arr, uint32_t height, uint32_t width, const char* label)
+void PrintTensorf32(uint32_t width, uint32_t height, float* arr, const char* label = "Tensor", uint32_t majorStride = 0, uint32_t tensorSize = 0, uint32_t batchCount = 1)
 {
+	if (majorStride == 0)
+		majorStride = width;
 	printf("%s:\n", label);
-	for (uint32_t i = 0; i < height; i++)
+	for (int b = batchCount; b--;)
 	{
-		for (uint32_t j = 0; j < width; j++)
-			printf("%6.3f ", arr[i * width + j]);
+		for (uint32_t i = 0; i < height; i++)
+		{
+			for (uint32_t j = 0; j < width; j++)
+				printf("%6.3f ", arr[i * majorStride + j]);
+			printf("\n");
+		}
 		printf("\n");
+		arr += tensorSize;
 	}
-	printf("\n");
 }
 
 float RandomFloat()
@@ -61,11 +67,11 @@ void cpuSgemmStridedBatched(
 	// determines the length of dot products
 	int outWidth, int inHeight, int sharedDim,
 	const float* alpha,
-	// determines the number of elements to skip to get to the next row/column and matrix
-	float* W, int WMajorStride, int WMatrixStride,
-	float* X, int XMajorStride, int XMatrixStride,
+	// determines the number of elements to skip to get to the next row/column and tensor
+	float* W, int WMajorStride, int WTensorStride,
+	float* X, int XMajorStride, int XTensorStride,
 	const float* beta,
-	float* Y, int YMajorStride, int YMatrixStride,
+	float* Y, int YMajorStride, int YTensorStride,
 	int batchCount)
 {
 	for (int b = batchCount; b--;)
@@ -84,59 +90,9 @@ void cpuSgemmStridedBatched(
 				Y[n * YMajorStride + m] = *alpha * sum + *beta * Y[n * YMajorStride + m];
 			}
 		}
-		X += XMatrixStride;
-		W += WMatrixStride;
-		Y += YMatrixStride;
-	}
-}
-
-void simpleGEMM(
-	bool transA,		// is the input matrix transposed
-	bool transB,		// is the weight matrix transposed
-	bool transC,		// is the output matrix transposed
-	int inHeight,		// the height of output matrix after the operation
-	int outWidth,		// the width of output matrix after the operation	
-	int sharedDim,			// the leftover dimension
-	int batchCount,		// the number of sequantial matrices to process
-	float* Y,			// the Y in Y = X * W
-	float* X,			// the X in Y = X * W
-	float* W			// the W in Y = X * W
-)
-{
-	const float alpha = 1.0f;
-	const float beta = 0.0f;
-	// need an easier way to deel with dimensions
-	// assert total size is the same as user input
-
-	// the problem with this approach is that determining the size of the matrix outside of the function is a pain
-	// this is more like a reverse solver, given y's details, solve for x and w like a sudoku puzzle
-	//if transC, flip x and w. also transpose them. also, the dim of x, w, and y is flipped
-	if (transC)
-	{
-		cpuSgemmStridedBatched(
-			transB, transA,
-			outWidth, inHeight, sharedDim,
-			&alpha,
-			// supposed to be !trans cuz trans ^ transC, but just flipped the order
-			X, transA ? sharedDim : inHeight, sharedDim * inHeight,
-			W, transB ? outWidth : sharedDim, sharedDim * outWidth,
-			&beta,
-			Y, inHeight, inHeight * outWidth,
-			batchCount
-		);
-	}
-	else
-	{
-		cpuSgemmStridedBatched(
-			transB, transA,
-			outWidth, inHeight, sharedDim,
-			&alpha,
-			W, transB ? sharedDim : outWidth, sharedDim * outWidth,
-			X, transA ? inHeight : sharedDim, inHeight * sharedDim,
-			&beta,
-			Y, outWidth, inHeight * outWidth,
-			batchCount
-		);
+		X += XTensorStride;
+		W += WTensorStride;
+		Y += YTensorStride;
 	}
 }
 
