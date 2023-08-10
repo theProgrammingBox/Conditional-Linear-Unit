@@ -2,8 +2,8 @@
 
 /*
 TODO:
-- add binary backward or make leaky linear cuz it can get stuck
 - add adam optimizer
+- add output weight
 - add multiple "heads"
 - make inHeight dynamic by calculating the max it can allocate and ensure it is not exceeded
 - see if you can make cpuSaxpy and cpuBinaryForward like cpuSgemmStridedBatched
@@ -64,6 +64,8 @@ struct CLU
 		delete[] product;
 		delete[] bias;
 		delete[] output;
+		delete[] productGrad;
+		delete[] inputGrad;
 	}
 
 	void forward()
@@ -130,7 +132,7 @@ struct CLU
 
 	void backward(float learningrate)
 	{
-		//PrintTensorf32(outWidth, hiddenHeight, outputGrad, "outputGrad", 0, outWidth, *inHeight);
+		//PrintTensorf32(outWidth, hiddenHeight, outputGrad, "outputGrad", 0, outputSize, *inHeight);
 		cpuSgemmStridedBatched
 		(
 			true, false,
@@ -221,29 +223,40 @@ int main()
 	srand(time(NULL));
 
 	float learningrate = 0.1f;
-	int inHeight = 64, inWidth = 2, hiddenWidth = 4, hiddenHeight = 1, outWidth = 2;
+	int inHeight = 64, inWidth = 16, hiddenWidth = 32, hiddenHeight = 2, outWidth = 4;
+	int outputSize = outWidth * hiddenHeight;
 	float* input = new float[inWidth * inHeight];
-	float* outputGrad = new float[outWidth * inHeight];
-	float errSclalar = 1.0f / inHeight;
+	float* outputGrad = new float[outputSize * inHeight];
 
 	CLU clu(input, &inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, outputGrad);
 
-	for (int epoch = 0; epoch < 1000000; ++epoch)
+	for (int epoch = 0; epoch < 10000; ++epoch)
 	{
-		for (int i = 0; i < inWidth * inHeight; ++i)
-			input[i] = RandomFloat();
+		for (int i = 0; i < inHeight; ++i)
+		{
+			uint8_t a = rand();
+			uint8_t b = rand();
+			uint8_t c = a | b;
+
+			for (int j = 0; j < int(inWidth * 0.5); ++j)
+				input[i * inWidth + j] = (a >> j) & 1;
+			for (int j = 0; j < int(inWidth * 0.5); ++j)
+				input[i * inWidth + j + int(inWidth * 0.5)] = (b >> j) & 1;
+			for (int j = 0; j < outputSize; ++j)
+				outputGrad[i * outputSize + j] = (c >> j) & 1;
+		}
 
 		clu.forward();
 
 		float err = 0;
-		for (int i = 0; i < outWidth * inHeight; ++i)
+		for (int i = 0; i < outputSize * inHeight; ++i)
 		{
-			outputGrad[i] = (1 - input[i]) - clu.output[i];
+			outputGrad[i] = outputGrad[i] - clu.output[i];
 			err += outputGrad[i] * outputGrad[i];
 		}
 
 		clu.backward(learningrate);
-		err = sqrt(err) * errSclalar;
+		err = sqrt(err) / inHeight;
 		printf("err: %f\n", err);
 	}
 	printf("\n");
