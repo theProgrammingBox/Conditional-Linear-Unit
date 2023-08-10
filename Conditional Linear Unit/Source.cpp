@@ -172,21 +172,6 @@ struct CLU
 			);
 		}
 
-		// binary backward
-		/*for (int i = 0; i < *inHeight; ++i)
-		{
-			cpuBinaryBackward
-			(
-				hiddenSize,
-				&one,
-				product + i * productWidth,
-				productGrad + i * productWidth,
-				product + i * productWidth,
-				&zero,
-				productGrad + i * productWidth
-			);
-		}*/
-
 		//PrintTensorf32(productWidth, *inHeight, productGrad, "binaryGrad");
 		cpuSgemmStridedBatched
 		(
@@ -235,43 +220,36 @@ int main()
 {
 	srand(time(NULL));
 
-	float learningrate = 1.0f;
-	int inHeight = 32, inWidth = 2, hiddenWidth = 4, hiddenHeight = 1, outWidth = 2;
+	float learningrate = 0.1f;
+	int inHeight = 64, inWidth = 2, hiddenWidth = 4, hiddenHeight = 1, outWidth = 2;
 	float* input = new float[inWidth * inHeight];
 	float* outputGrad = new float[outWidth * inHeight];
 	float errSclalar = 1.0f / inHeight;
 
-	float avgErr = 0;
-	for (int t = 0; t < 1000; ++t)
+	CLU clu(input, &inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, outputGrad);
+
+	for (int epoch = 0; epoch < 1000000; ++epoch)
 	{
-		CLU clu(input, &inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, outputGrad);
+		for (int i = 0; i < inWidth * inHeight; ++i)
+			input[i] = RandomFloat();
 
-		for (int epoch = 0; epoch < 1000; ++epoch)
+		clu.forward();
+
+		float err = 0;
+		for (int i = 0; i < outWidth * inHeight; ++i)
 		{
-			for (int i = 0; i < inWidth * inHeight; ++i)
-				input[i] = RandomFloat();
-
-			clu.forward();
-
-			float err = 0;
-			for (int i = 0; i < outWidth * inHeight; ++i)
-			{
-				outputGrad[i] = (1 - input[i]) - clu.output[i];
-				err += outputGrad[i] * outputGrad[i];
-			}
-
-			clu.backward(learningrate);
-			err = sqrt(err) * errSclalar;
-			//printf("err: %f\n", err);
-			avgErr += err;
+			outputGrad[i] = (1 - input[i]) - clu.output[i];
+			err += outputGrad[i] * outputGrad[i];
 		}
-		//printf("\n");
+
+		clu.backward(learningrate);
+		err = sqrt(err) * errSclalar;
+		printf("err: %f\n", err);
 	}
+	printf("\n");
 
-	printf("avgErr: %f\n", avgErr / 1000);
-
-	//clu.printParameters();
-	//clu.printWork();
+	/*clu.printParameters();
+	clu.printWork();*/
 
 	return 0;
 }
