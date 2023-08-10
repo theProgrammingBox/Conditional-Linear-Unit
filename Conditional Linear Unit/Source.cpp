@@ -3,10 +3,15 @@
 /*
 TODO:
 - add adam optimizer
-- add output weight
 - add multiple "heads"
+- think about data layout for future optimizations with recursion
 - make inHeight dynamic by calculating the max it can allocate and ensure it is not exceeded
 - see if you can make cpuSaxpy and cpuBinaryForward like cpuSgemmStridedBatched
+*/
+
+/*
+THOUGHTS:
+- 
 */
 
 struct CLU
@@ -223,7 +228,7 @@ int main()
 	srand(time(NULL));
 
 	float learningrate = 0.1f;
-	int inHeight = 64, inWidth = 16, hiddenWidth = 32, hiddenHeight = 2, outWidth = 4;
+	int inHeight = 64, inWidth = 16, hiddenWidth = 16, hiddenHeight = 2, outWidth = 4;
 	int outputSize = outWidth * hiddenHeight;
 	float* input = new float[inWidth * inHeight];
 	float* outputGrad = new float[outputSize * inHeight];
