@@ -230,13 +230,13 @@ int main()
 
 	CLU clu(input, &inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, outputGrad);
 
-	for (int epoch = 0; epoch < 10000; ++epoch)
+	for (int epoch = 0; epoch < 100000; ++epoch)
 	{
 		for (int i = 0; i < inHeight; ++i)
 		{
 			uint8_t a = rand();
 			uint8_t b = rand();
-			uint8_t c = a | b;
+			uint8_t c = a & b;
 
 			for (int j = 0; j < int(inWidth * 0.5); ++j)
 				input[i * inWidth + j] = (a >> j) & 1;
@@ -251,12 +251,12 @@ int main()
 		float err = 0;
 		for (int i = 0; i < outputSize * inHeight; ++i)
 		{
-			outputGrad[i] = outputGrad[i] - clu.output[i];
-			err += outputGrad[i] * outputGrad[i];
+			outputGrad[i] = outputGrad[i] - (clu.output[i] > 0 ? 1 : 0);
+			err += abs(outputGrad[i]);
 		}
 
 		clu.backward(learningrate);
-		err = sqrt(err) / inHeight;
+		err = err / (outputSize * inHeight);
 		printf("err: %f\n", err);
 	}
 	printf("\n");
