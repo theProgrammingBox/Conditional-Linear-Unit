@@ -173,7 +173,7 @@ struct CLU
 		}
 
 		// binary backward
-		for (int i = 0; i < *inHeight; ++i)
+		/*for (int i = 0; i < *inHeight; ++i)
 		{
 			cpuBinaryBackward
 			(
@@ -185,7 +185,7 @@ struct CLU
 				&zero,
 				productGrad + i * productWidth
 			);
-		}
+		}*/
 
 		//PrintTensorf32(productWidth, *inHeight, productGrad, "binaryGrad");
 		cpuSgemmStridedBatched
@@ -239,30 +239,38 @@ int main()
 	int inHeight = 32, inWidth = 2, hiddenWidth = 4, hiddenHeight = 1, outWidth = 2;
 	float* input = new float[inWidth * inHeight];
 	float* outputGrad = new float[outWidth * inHeight];
-	float errSclalar = InvSqrt(outWidth * inHeight);
+	float errSclalar = 1.0f / inHeight;
 
-	CLU clu(input, &inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, outputGrad);
-
-	for (int epoch = 0; epoch < 1000; ++epoch)
+	float avgErr = 0;
+	for (int t = 0; t < 1000; ++t)
 	{
-		for (int i = 0; i < inWidth * inHeight; ++i)
-			input[i] = RandomFloat();
+		CLU clu(input, &inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, outputGrad);
 
-		clu.forward();
-
-		float err = 0;
-		for (int i = 0; i < outWidth * inHeight; ++i)
+		for (int epoch = 0; epoch < 1000; ++epoch)
 		{
-			outputGrad[i] = (1 - input[i]) - clu.output[i];
-			err += outputGrad[i] * outputGrad[i];
+			for (int i = 0; i < inWidth * inHeight; ++i)
+				input[i] = RandomFloat();
+
+			clu.forward();
+
+			float err = 0;
+			for (int i = 0; i < outWidth * inHeight; ++i)
+			{
+				outputGrad[i] = (1 - input[i]) - clu.output[i];
+				err += outputGrad[i] * outputGrad[i];
+			}
+
+			clu.backward(learningrate);
+			err = sqrt(err) * errSclalar;
+			//printf("err: %f\n", err);
+			avgErr += err;
 		}
-
-		clu.backward(learningrate);
-		printf("err: %f\n", err * errSclalar);
+		//printf("\n");
 	}
-	printf("\n");
 
-	clu.printParameters();
+	printf("avgErr: %f\n", avgErr / 1000);
+
+	//clu.printParameters();
 	//clu.printWork();
 
 	return 0;
