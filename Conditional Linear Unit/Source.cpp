@@ -179,6 +179,21 @@ struct CLU
 			);
 		}
 
+		// binary backward
+		/*for (int i = 0; i < *inHeight; ++i)
+		{
+			cpuBinaryBackward
+			(
+				hiddenSize,
+				&alpha,
+				product + i * productWidth,
+				productGrad + i * productWidth,
+				product + i * productWidth,
+				&zero,
+				productGrad + i * productWidth
+			);
+		}*/
+
 		//PrintTensorf32(productWidth, *inHeight, productGrad, "binaryGrad");
 		cpuSgemmStridedBatched
 		(
@@ -227,8 +242,8 @@ int main()
 {
 	srand(time(NULL));
 
-	float learningrate = 0.1f;
-	int inHeight = 64, inWidth = 16, hiddenWidth = 16, hiddenHeight = 2, outWidth = 4;
+	float learningrate = 0.01f;
+	int inHeight = 1024, inWidth = 16, hiddenWidth = 16, hiddenHeight = 2, outWidth = 4;
 	int outputSize = outWidth * hiddenHeight;
 	float* input = new float[inWidth * inHeight];
 	float* outputGrad = new float[outputSize * inHeight];
