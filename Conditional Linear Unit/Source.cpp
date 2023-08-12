@@ -20,32 +20,39 @@ struct CLU
 	int* inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth;
 	int productWidth, hiddenSize, outputSize;
 	float invSqrtInWidth, invsqrtHiddenWidth, invSqrtOutWidth, invSqrtProductWidth, invSqrtInHeight;
+	float expDecayMean, expDecayVar;	// for adam optimizer
 	float* input, * weight, * product, *bias, *output;
-	float* outputGrad, * productGrad, * inputGrad;
+	float* outputGrad, * productGrad, * inputGrad, * weightGrad, * biasGrad;
+	float* weightGradMean, * weightGradVar, * biasGradMean, * biasGradVar;	// for adam optimizer
 	static constexpr float one = 1.0f;
 	static constexpr float zero = 0.0f;
+	float beta1, beta2, epsilon;	// for adam optimizer
 
 	CLU
 	(
 		float* input, int* inHeight, int inWidth,
 		int hiddenWidth, int hiddenHeight, int outWidth,
-		float* outputGrad
+		float* outputGrad,
+		float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1e-16f
 	) :
 		input(input), inHeight(inHeight), inWidth(inWidth),
 		hiddenWidth(hiddenWidth), hiddenHeight(hiddenHeight), outWidth(outWidth),
-		outputGrad(outputGrad)
+		outputGrad(outputGrad),
+		beta1(beta1), beta2(beta2), epsilon(epsilon)
 	{
 		productWidth = hiddenWidth * (hiddenHeight + outWidth);
 
 		hiddenSize = hiddenWidth * hiddenHeight;
 		outputSize = outWidth * hiddenHeight;
 
-		// try invsqrt
 		invSqrtInWidth = InvSqrt(inWidth);
 		invsqrtHiddenWidth = InvSqrt(hiddenWidth);
 		invSqrtOutWidth = InvSqrt(outWidth);
 		invSqrtProductWidth = InvSqrt(productWidth);
 		invSqrtInHeight = InvSqrt(*inHeight);
+
+		expDecayMean = 1.0f;
+		expDecayVar = 1.0f;
 
 		// inHeight max calculation, for now, it is static
 		weight = new float[productWidth * inWidth];
@@ -55,12 +62,24 @@ struct CLU
 
 		productGrad = new float[productWidth * (*inHeight)];
 		inputGrad = new float[inWidth * (*inHeight)];
+		weightGrad = new float[productWidth * inWidth];
+		biasGrad = new float[productWidth];
 
-		// initialize weight
+		weightGradMean = new float[productWidth * inWidth];
+		weightGradVar = new float[productWidth * inWidth];
+		biasGradMean = new float[productWidth];
+		biasGradVar = new float[productWidth];
+
+		// initialize params
 		for (int i = 0; i < productWidth * inWidth; ++i)
 			weight[i] = RandomFloat();
 		for (int i = 0; i < productWidth; ++i)
 			bias[i] = RandomFloat();
+
+		memset(weightGradMean, 0, productWidth * inWidth * sizeof(float));
+		memset(weightGradVar, 0, productWidth * inWidth * sizeof(float));
+		memset(biasGradMean, 0, productWidth * sizeof(float));
+		memset(biasGradVar, 0, productWidth * sizeof(float));
 	}
 
 	~CLU()
@@ -69,8 +88,16 @@ struct CLU
 		delete[] product;
 		delete[] bias;
 		delete[] output;
+
 		delete[] productGrad;
 		delete[] inputGrad;
+		delete[] weightGrad;
+		delete[] biasGrad;
+
+		delete[] weightGradMean;
+		delete[] weightGradVar;
+		delete[] biasGradMean;
+		delete[] biasGradVar;
 	}
 
 	void forward()
@@ -166,8 +193,9 @@ struct CLU
 		//PrintTensorf32(outWidth, hiddenWidth, productGrad + hiddenSize, "linearGrad", 0, productWidth, *inHeight);
 		//PrintTensorf32(productWidth, *inHeight, productGrad, "productGrad");
 
-		// add to bias
-		float alpha = learningrate * invSqrtInHeight;
+		// add to biasGrad
+		memset(biasGrad, 0, productWidth * sizeof(float));
+		float alpha = 1 * invSqrtInHeight;
 		for (int i = 0; i < *inHeight; ++i)
 		{
 			cpuSaxpy
@@ -175,10 +203,11 @@ struct CLU
 				productWidth,
 				&alpha,
 				productGrad + i * productWidth, 1,
-				bias, 1
+				biasGrad, 1
 			);
 		}
 
+		//PrintTensorf32(productWidth, 1, biasGrad, "biasGrad");
 		// binary backward
 		/*for (int i = 0; i < *inHeight; ++i)
 		{
@@ -215,12 +244,38 @@ struct CLU
 			&alpha,
 			productGrad, productWidth, 0,
 			input, inWidth, 0,
-			&one,
-			weight, productWidth, 0,
+			&zero,
+			weightGrad, productWidth, 0,
 			1
 		);
 
-		//PrintTensorf32(productWidth, inWidth, weight, "weight");
+		//PrintTensorf32(productWidth, inWidth, weightGrad, "weightGrad");
+		
+		// apply gradients to parameters using adam
+		expDecayMean *= beta1;
+		expDecayVar *= beta2;
+
+		for (int i = 0; i < productWidth; ++i)
+		{
+			float gradient = biasGrad[i];
+			biasGradMean[i] = beta1 * biasGradMean[i] + (1.0f - beta1) * gradient;
+			biasGradVar[i] = beta2 * biasGradVar[i] + (1.0f - beta2) * gradient * gradient;
+			float gradMeanCorrected = biasGradMean[i] / (1.0f - expDecayMean);
+			float gradVarCorrected = biasGradVar[i] / (1.0f - expDecayVar);
+			float finalGradient = gradMeanCorrected * InvSqrt(gradVarCorrected + epsilon);
+			bias[i] += finalGradient * learningrate;
+		}
+
+		for (int i = 0; i < productWidth * inWidth; ++i)
+		{
+			float gradient = weightGrad[i];
+			weightGradMean[i] = beta1 * weightGradMean[i] + (1.0f - beta1) * gradient;
+			weightGradVar[i] = beta2 * weightGradVar[i] + (1.0f - beta2) * gradient * gradient;
+			float gradMeanCorrected = weightGradMean[i] / (1.0f - expDecayMean);
+			float gradVarCorrected = weightGradVar[i] / (1.0f - expDecayVar);
+			float finalGradient = gradMeanCorrected * InvSqrt(gradVarCorrected + epsilon);
+			weight[i] += finalGradient * learningrate;
+		}
 	}
 
 	void printParameters() const
