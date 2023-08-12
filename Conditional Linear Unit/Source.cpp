@@ -195,13 +195,12 @@ struct CLU
 
 		// add to biasGrad
 		memset(biasGrad, 0, productWidth * sizeof(float));
-		float alpha = 1 * invSqrtInHeight;
 		for (int i = 0; i < *inHeight; ++i)
 		{
 			cpuSaxpy
 			(
 				productWidth,
-				&alpha,
+				&invSqrtInHeight,
 				productGrad + i * productWidth, 1,
 				biasGrad, 1
 			);
@@ -214,7 +213,7 @@ struct CLU
 			cpuBinaryBackward
 			(
 				hiddenSize,
-				&alpha,
+				&one,
 				product + i * productWidth,
 				productGrad + i * productWidth,
 				product + i * productWidth,
@@ -241,7 +240,7 @@ struct CLU
 		(
 			false, true,
 			productWidth, inWidth, *inHeight,
-			&alpha,
+			&invSqrtInHeight,
 			productGrad, productWidth, 0,
 			input, inWidth, 0,
 			&zero,
@@ -258,10 +257,12 @@ struct CLU
 		for (int i = 0; i < productWidth; ++i)
 		{
 			float gradient = biasGrad[i];
-			biasGradMean[i] = beta1 * biasGradMean[i] + (1.0f - beta1) * gradient;
-			biasGradVar[i] = beta2 * biasGradVar[i] + (1.0f - beta2) * gradient * gradient;
-			float gradMeanCorrected = biasGradMean[i] / (1.0f - expDecayMean);
-			float gradVarCorrected = biasGradVar[i] / (1.0f - expDecayVar);
+			float newGradMean = beta1 * biasGradMean[i] + (1.0f - beta1) * gradient;
+			float newGradVar = beta2 * biasGradVar[i] + (1.0f - beta2) * gradient * gradient;
+			biasGradMean[i] = newGradMean;
+			biasGradVar[i] = newGradVar;
+			float gradMeanCorrected = newGradMean / (1.0f - expDecayMean);
+			float gradVarCorrected = newGradVar / (1.0f - expDecayVar);
 			float finalGradient = gradMeanCorrected * InvSqrt(gradVarCorrected + epsilon);
 			bias[i] += finalGradient * learningrate;
 		}
@@ -269,10 +270,12 @@ struct CLU
 		for (int i = 0; i < productWidth * inWidth; ++i)
 		{
 			float gradient = weightGrad[i];
-			weightGradMean[i] = beta1 * weightGradMean[i] + (1.0f - beta1) * gradient;
-			weightGradVar[i] = beta2 * weightGradVar[i] + (1.0f - beta2) * gradient * gradient;
-			float gradMeanCorrected = weightGradMean[i] / (1.0f - expDecayMean);
-			float gradVarCorrected = weightGradVar[i] / (1.0f - expDecayVar);
+			float newGradMean = beta1 * weightGradMean[i] + (1.0f - beta1) * gradient;
+			float newGradVar = beta2 * weightGradVar[i] + (1.0f - beta2) * gradient * gradient;
+			weightGradMean[i] = newGradMean;
+			weightGradVar[i] = newGradVar;
+			float gradMeanCorrected = newGradMean / (1.0f - expDecayMean);
+			float gradVarCorrected = newGradVar / (1.0f - expDecayVar);
 			float finalGradient = gradMeanCorrected * InvSqrt(gradVarCorrected + epsilon);
 			weight[i] += finalGradient * learningrate;
 		}
