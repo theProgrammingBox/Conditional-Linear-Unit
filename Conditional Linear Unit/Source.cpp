@@ -2,37 +2,41 @@
 
 /*
 TODO:
-- add adam optimizer
 - add multiple "heads"
 - think about data layout for future optimizations with recursion
-- make inHeight dynamic by calculating the max it can allocate and ensure it is not exceeded
+- make inHeight allocation dynamic by calculating the max it can allocate and ensure it is not exceeded
+-- assert that inHeight does not exceed max
 - see if you can make cpuSaxpy and cpuBinaryForward like cpuSgemmStridedBatched
 */
 
 /*
-THOUGHTS:
-- 
+Experiments as you scale:
+- try one as alpha
+-- works the same if not slightly worse at a small scale
+- try 0 - 1 param init
+-- works quite a bit worse at a small scale
 */
 
 struct CLU
 {
-	// inHeight can change as it is out batch size
-	int* inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth;
+	int* inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, heads;
+
 	int productWidth, hiddenSize, outputSize;
 	float invSqrtInWidth, invsqrtHiddenWidth, invSqrtOutWidth, invSqrtProductWidth, invSqrtInHeight;
-	float expDecayMean, expDecayVar;	// for adam optimizer
+	float expDecayMean, expDecayVar;
+	float beta1, beta2, epsilon;
+
 	float* input, * weight, * product, *bias, *output;
 	float* outputGrad, * productGrad, * inputGrad, * weightGrad, * biasGrad;
-	float* weightGradMean, * weightGradVar, * biasGradMean, * biasGradVar;	// for adam optimizer
+	float* weightGradMean, * weightGradVar, * biasGradMean, * biasGradVar;
+
 	static constexpr float one = 1.0f;
 	static constexpr float zero = 0.0f;
-	float beta1, beta2, epsilon;	// for adam optimizer
 
 	CLU
 	(
-		float* input, int* inHeight, int inWidth,
-		int hiddenWidth, int hiddenHeight, int outWidth,
-		float* outputGrad,
+		int* inHeight, int inWidth, int hiddenWidth, int hiddenHeight, int outWidth,
+		float* input, float* outputGrad,
 		float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1e-16f
 	) :
 		input(input), inHeight(inHeight), inWidth(inWidth),
@@ -41,7 +45,6 @@ struct CLU
 		beta1(beta1), beta2(beta2), epsilon(epsilon)
 	{
 		productWidth = hiddenWidth * (hiddenHeight + outWidth);
-
 		hiddenSize = hiddenWidth * hiddenHeight;
 		outputSize = outWidth * hiddenHeight;
 
@@ -54,7 +57,6 @@ struct CLU
 		expDecayMean = 1.0f;
 		expDecayVar = 1.0f;
 
-		// inHeight max calculation, for now, it is static
 		weight = new float[productWidth * inWidth];
 		product = new float[productWidth * (*inHeight)];
 		bias = new float[productWidth];
@@ -70,7 +72,6 @@ struct CLU
 		biasGradMean = new float[productWidth];
 		biasGradVar = new float[productWidth];
 
-		// initialize params
 		for (int i = 0; i < productWidth * inWidth; ++i)
 			weight[i] = RandomFloat();
 		for (int i = 0; i < productWidth; ++i)
@@ -116,7 +117,6 @@ struct CLU
 			product, productWidth, 0,
 			1
 		);
-
 		//PrintTensorf32(productWidth, *inHeight, product, "product");
 		//PrintTensorf32(productWidth, 1, bias, "bias");
 
@@ -130,8 +130,8 @@ struct CLU
 				product + i * productWidth, 1
 			);
 		}
-
 		//PrintTensorf32(productWidth, *inHeight, product, "added bias");
+
 		for (int i = 0; i < *inHeight; ++i)
 		{
 			cpuBinaryForward
@@ -143,10 +143,10 @@ struct CLU
 				product + i * productWidth
 			);
 		}
-
 		//PrintTensorf32(productWidth, *inHeight, product, "full product tensor");
 		//PrintTensorf32(hiddenWidth, hiddenHeight, product, "binary forward", 0, productWidth, *inHeight);
 		//PrintTensorf32(outWidth, hiddenWidth, product + hiddenSize, "Linear forward", 0, productWidth, *inHeight);
+		
 		cpuSgemmStridedBatched
 		(
 			false, false,
@@ -158,13 +158,13 @@ struct CLU
 			output, outWidth, outputSize,
 			*inHeight
 		);
-
 		//PrintTensorf32(outputSize, *inHeight, output, "output");
 	}
 
 	void backward(float learningrate)
 	{
 		//PrintTensorf32(outWidth, hiddenHeight, outputGrad, "outputGrad", 0, outputSize, *inHeight);
+		
 		cpuSgemmStridedBatched
 		(
 			true, false,
@@ -176,8 +176,8 @@ struct CLU
 			productGrad, hiddenWidth, productWidth,
 			*inHeight
 		);
-
 		//PrintTensorf32(hiddenWidth, hiddenHeight, productGrad, "binaryGrad", 0, productWidth, *inHeight);
+		
 		cpuSgemmStridedBatched
 		(
 			false, true,
@@ -189,11 +189,9 @@ struct CLU
 			productGrad + hiddenSize, outWidth, productWidth,
 			*inHeight
 		);
-
 		//PrintTensorf32(outWidth, hiddenWidth, productGrad + hiddenSize, "linearGrad", 0, productWidth, *inHeight);
 		//PrintTensorf32(productWidth, *inHeight, productGrad, "productGrad");
 
-		// add to biasGrad
 		memset(biasGrad, 0, productWidth * sizeof(float));
 		for (int i = 0; i < *inHeight; ++i)
 		{
@@ -205,9 +203,8 @@ struct CLU
 				biasGrad, 1
 			);
 		}
-
 		//PrintTensorf32(productWidth, 1, biasGrad, "biasGrad");
-		// binary backward
+		
 		/*for (int i = 0; i < *inHeight; ++i)
 		{
 			cpuBinaryBackward
@@ -221,8 +218,8 @@ struct CLU
 				productGrad + i * productWidth
 			);
 		}*/
-
 		//PrintTensorf32(productWidth, *inHeight, productGrad, "binaryGrad");
+		
 		cpuSgemmStridedBatched
 		(
 			true, false,
@@ -234,8 +231,8 @@ struct CLU
 			inputGrad, inWidth, 0,
 			1
 		);
-
 		//PrintTensorf32(inWidth, *inHeight, inputGrad, "inputGrad");
+		
 		cpuSgemmStridedBatched
 		(
 			false, true,
@@ -247,10 +244,8 @@ struct CLU
 			weightGrad, productWidth, 0,
 			1
 		);
-
 		//PrintTensorf32(productWidth, inWidth, weightGrad, "weightGrad");
 		
-		// apply gradients to parameters using adam
 		expDecayMean *= beta1;
 		expDecayVar *= beta2;
 
@@ -306,15 +301,19 @@ int main()
 	float* input = new float[inWidth * inHeight];
 	float* outputGrad = new float[outputSize * inHeight];
 
-	CLU clu(input, &inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, outputGrad);
+	CLU clu
+	(
+		&inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth,
+		input, outputGrad
+	);
 
-	for (int epoch = 0; epoch < 100000; ++epoch)
+	for (int epoch = 0; epoch < 1000; ++epoch)
 	{
 		for (int i = 0; i < inHeight; ++i)
 		{
 			uint8_t a = rand();
 			uint8_t b = rand();
-			uint8_t c = a & b;
+			uint8_t c = a | b;
 
 			for (int j = 0; j < int(inWidth * 0.5); ++j)
 				input[i * inWidth + j] = (a >> j) & 1;

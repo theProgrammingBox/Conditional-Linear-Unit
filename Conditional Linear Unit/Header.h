@@ -30,7 +30,11 @@ void PrintTensorf32(uint32_t width, uint32_t height, float* arr, const char* lab
 
 float RandomFloat()
 {
+	// from -1 - 1
 	return rand() * 0.00006103515625f - 1.0f;
+
+	// from 0 - 1
+	//return rand() * 0.000030517578125f;
 }
 
 float RandomGaussian(float mean, float stddev)
