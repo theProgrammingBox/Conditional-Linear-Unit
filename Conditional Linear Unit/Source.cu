@@ -1,4 +1,4 @@
-#include "CLU.h"
+#include "CLU.cuh"
 
 /*
 TODO:
