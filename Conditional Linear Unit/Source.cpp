@@ -308,7 +308,7 @@ int main()
 	srand(time(NULL));
 
 	float learningrate = 0.01f;
-	int inHeight = 1024, inWidth = 16, hiddenWidth = 16, hiddenHeight = 1, outWidth = 1, heads = 8;
+	int inHeight = 1024, inWidth = 16, hiddenWidth = 16, hiddenHeight = 1, outWidth = 8, heads = 1;
 	int outputSize = outWidth * hiddenHeight * heads;
 	float* input = new float[inWidth * inHeight];
 	float* outputGrad = new float[outputSize * inHeight];
