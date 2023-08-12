@@ -3,10 +3,11 @@
 /*
 TODO:
 - add multiple "heads"
-- think about data layout for future optimizations with recursion
-- make inHeight allocation dynamic by calculating the max it can allocate and ensure it is not exceeded
--- assert that inHeight does not exceed max
-- see if you can make cpuSaxpy and cpuBinaryForward like cpuSgemmStridedBatched
+- add dynamic input and outputGrad copy option by passing nullptr
+- work on gpu
+-- see if you can make cpuSaxpy and cpuBinaryForward like cpuSgemmStridedBatched
+-- make inHeight allocation dynamic by calculating the max it can allocate and ensure it is not exceeded
+--- assert that inHeight does not exceed max
 */
 
 /*
@@ -21,13 +22,13 @@ struct CLU
 {
 	int* inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, heads;
 
-	int productWidth, hiddenSize, outputSize;
+	int nonlinearWidth, jointWidth, productWidth, outputSize, batches;
 	float invSqrtInWidth, invsqrtHiddenWidth, invSqrtOutWidth, invSqrtProductWidth, invSqrtInHeight;
 	float expDecayMean, expDecayVar;
 	float beta1, beta2, epsilon;
 
 	float* input, * weight, * product, *bias, *output;
-	float* outputGrad, * productGrad, * inputGrad, * weightGrad, * biasGrad;
+	float* outputGrad, * productGrad, * biasGrad, * inputGrad, * weightGrad;
 	float* weightGradMean, * weightGradVar, * biasGradMean, * biasGradVar;
 
 	static constexpr float one = 1.0f;
@@ -35,37 +36,45 @@ struct CLU
 
 	CLU
 	(
-		int* inHeight, int inWidth, int hiddenWidth, int hiddenHeight, int outWidth,
+		int* inHeight, int inWidth, int hiddenWidth, int hiddenHeight, int outWidth, int heads,
 		float* input, float* outputGrad,
 		float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1e-16f
 	) :
-		input(input), inHeight(inHeight), inWidth(inWidth),
-		hiddenWidth(hiddenWidth), hiddenHeight(hiddenHeight), outWidth(outWidth),
-		outputGrad(outputGrad),
+		// todo: input and outputGrad option for copy from cpu to gpu
+		inHeight(inHeight), inWidth(inWidth),
+		hiddenWidth(hiddenWidth), hiddenHeight(hiddenHeight),
+		outWidth(outWidth), heads(heads),
+		input(input), outputGrad(outputGrad),
 		beta1(beta1), beta2(beta2), epsilon(epsilon)
 	{
-		productWidth = hiddenWidth * (hiddenHeight + outWidth);
-		hiddenSize = hiddenWidth * hiddenHeight;
+		nonlinearWidth = hiddenWidth * hiddenHeight;
+		jointWidth = nonlinearWidth + outWidth * hiddenWidth;
+		productWidth = jointWidth * heads;
 		outputSize = outWidth * hiddenHeight;
+		batches = heads * *inHeight;	// todo
+		// batches is dynamic so define in forward pass, must remain the same for the next backward pass
 
 		invSqrtInWidth = InvSqrt(inWidth);
 		invsqrtHiddenWidth = InvSqrt(hiddenWidth);
 		invSqrtOutWidth = InvSqrt(outWidth);
 		invSqrtProductWidth = InvSqrt(productWidth);
-		invSqrtInHeight = InvSqrt(*inHeight);
+		invSqrtInHeight = InvSqrt(*inHeight);	// todo
+		// inheight is dynamic so define in forward pass, must remain the same for the next backward pass
 
 		expDecayMean = 1.0f;
 		expDecayVar = 1.0f;
 
 		weight = new float[productWidth * inWidth];
-		product = new float[productWidth * (*inHeight)];
+		product = new float[productWidth * *inHeight];	// todo
 		bias = new float[productWidth];
-		output = new float[outputSize * (*inHeight)];
+		output = new float[outputSize * batches];	// todo
+		// product and output are dynamic so define in compile function where the max is calculated
 
-		productGrad = new float[productWidth * (*inHeight)];
-		inputGrad = new float[inWidth * (*inHeight)];
-		weightGrad = new float[productWidth * inWidth];
+		productGrad = new float[productWidth * *inHeight];	// todo
 		biasGrad = new float[productWidth];
+		inputGrad = new float[inWidth * *inHeight];	// todo
+		weightGrad = new float[productWidth * inWidth];
+		// productGrad and inputGrad are dynamic so define in compile function where the max is calculated
 
 		weightGradMean = new float[productWidth * inWidth];
 		weightGradVar = new float[productWidth * inWidth];
@@ -91,9 +100,9 @@ struct CLU
 		delete[] output;
 
 		delete[] productGrad;
+		delete[] biasGrad;
 		delete[] inputGrad;
 		delete[] weightGrad;
-		delete[] biasGrad;
 
 		delete[] weightGradMean;
 		delete[] weightGradVar;
@@ -103,6 +112,8 @@ struct CLU
 
 	void forward()
 	{
+		// dynamic placeholder
+
 		//PrintTensorf32(inWidth, *inHeight, input, "input");
 		//PrintTensorf32(productWidth, inWidth, weight, "weight");
 
@@ -132,31 +143,31 @@ struct CLU
 		}
 		//PrintTensorf32(productWidth, *inHeight, product, "added bias");
 
-		for (int i = 0; i < *inHeight; ++i)
+		for (int i = 0; i < batches; ++i)
 		{
 			cpuBinaryForward
 			(
-				hiddenSize,
+				nonlinearWidth,
 				&one,
-				product + i * productWidth,
+				product + i * jointWidth,
 				&zero,
-				product + i * productWidth
+				product + i * jointWidth
 			);
 		}
 		//PrintTensorf32(productWidth, *inHeight, product, "full product tensor");
 		//PrintTensorf32(hiddenWidth, hiddenHeight, product, "binary forward", 0, productWidth, *inHeight);
-		//PrintTensorf32(outWidth, hiddenWidth, product + hiddenSize, "Linear forward", 0, productWidth, *inHeight);
+		//PrintTensorf32(outWidth, hiddenWidth, product + nonlinearWidth, "Linear forward", 0, productWidth, *inHeight);
 		
 		cpuSgemmStridedBatched
 		(
 			false, false,
 			outWidth, hiddenHeight, hiddenWidth,
 			&invsqrtHiddenWidth,
-			product + hiddenSize, outWidth, productWidth,
-			product, hiddenWidth, productWidth,
+			product + nonlinearWidth, outWidth, jointWidth,
+			product, hiddenWidth, jointWidth,
 			&zero,
 			output, outWidth, outputSize,
-			*inHeight
+			batches
 		);
 		//PrintTensorf32(outputSize, *inHeight, output, "output");
 	}
@@ -170,11 +181,11 @@ struct CLU
 			true, false,
 			hiddenWidth, hiddenHeight, outWidth,
 			&invSqrtOutWidth,
-			product + hiddenSize, outWidth, productWidth,
+			product + nonlinearWidth, outWidth, jointWidth,
 			outputGrad, outWidth, outputSize,
 			&zero,
-			productGrad, hiddenWidth, productWidth,
-			*inHeight
+			productGrad, hiddenWidth, jointWidth,
+			batches
 		);
 		//PrintTensorf32(hiddenWidth, hiddenHeight, productGrad, "binaryGrad", 0, productWidth, *inHeight);
 		
@@ -184,13 +195,29 @@ struct CLU
 			outWidth, hiddenWidth, hiddenHeight,
 			&invsqrtHiddenWidth,
 			outputGrad, outWidth, outputSize,
-			product, hiddenWidth, productWidth,
+			product, hiddenWidth, jointWidth,
 			&zero,
-			productGrad + hiddenSize, outWidth, productWidth,
-			*inHeight
+			productGrad + nonlinearWidth, outWidth, jointWidth,
+			batches
 		);
-		//PrintTensorf32(outWidth, hiddenWidth, productGrad + hiddenSize, "linearGrad", 0, productWidth, *inHeight);
+		//PrintTensorf32(outWidth, hiddenWidth, productGrad + nonlinearWidth, "linearGrad", 0, productWidth, *inHeight);
 		//PrintTensorf32(productWidth, *inHeight, productGrad, "productGrad");
+		
+		// did not update this for heads as i am not planning to use it, its just here for completeness
+		/*for (int i = 0; i < *inHeight; ++i)
+		{
+			cpuBinaryBackward
+			(
+				nonlinearWidth,
+				&one,
+				product + i * productWidth,
+				productGrad + i * productWidth,
+				product + i * productWidth,
+				&zero,
+				productGrad + i * productWidth
+			);
+		}*/
+		//PrintTensorf32(productWidth, *inHeight, productGrad, "binaryGrad");
 
 		memset(biasGrad, 0, productWidth * sizeof(float));
 		for (int i = 0; i < *inHeight; ++i)
@@ -204,21 +231,6 @@ struct CLU
 			);
 		}
 		//PrintTensorf32(productWidth, 1, biasGrad, "biasGrad");
-		
-		/*for (int i = 0; i < *inHeight; ++i)
-		{
-			cpuBinaryBackward
-			(
-				hiddenSize,
-				&one,
-				product + i * productWidth,
-				productGrad + i * productWidth,
-				product + i * productWidth,
-				&zero,
-				productGrad + i * productWidth
-			);
-		}*/
-		//PrintTensorf32(productWidth, *inHeight, productGrad, "binaryGrad");
 		
 		cpuSgemmStridedBatched
 		(
@@ -286,7 +298,7 @@ struct CLU
 	{
 		PrintTensorf32(inWidth, *inHeight, input, "input");
 		PrintTensorf32(hiddenWidth, hiddenHeight, product, "binary forward", 0, productWidth, *inHeight);
-		PrintTensorf32(outWidth, hiddenWidth, product + hiddenSize, "Linear forward", 0, productWidth, *inHeight);
+		PrintTensorf32(outWidth, hiddenWidth, product + nonlinearWidth, "Linear forward", 0, productWidth, *inHeight);
 		PrintTensorf32(outputSize, *inHeight, output, "output");
 	}
 };
@@ -296,14 +308,14 @@ int main()
 	srand(time(NULL));
 
 	float learningrate = 0.01f;
-	int inHeight = 1024, inWidth = 16, hiddenWidth = 16, hiddenHeight = 2, outWidth = 4;
-	int outputSize = outWidth * hiddenHeight;
+	int inHeight = 1024, inWidth = 16, hiddenWidth = 16, hiddenHeight = 1, outWidth = 1, heads = 8;
+	int outputSize = outWidth * hiddenHeight * heads;
 	float* input = new float[inWidth * inHeight];
 	float* outputGrad = new float[outputSize * inHeight];
 
 	CLU clu
 	(
-		&inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth,
+		&inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, heads,
 		input, outputGrad
 	);
 
