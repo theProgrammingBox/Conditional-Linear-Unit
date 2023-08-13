@@ -1,4 +1,4 @@
-#include "CLU.h"
+#include "NeuralNetwork.cuh"
 
 /*
 TODO:
@@ -19,7 +19,18 @@ Experiments as you scale:
 
 int main()
 {
-	srand(time(NULL));
+	NeuralNetwork nn;
+	nn.AddLayer(16, 16, 1, 8, 1);
+	nn.Compile();
+	nn.PrintParameters();
+
+	return 0;
+	/*cublasHandle_t cublasHandle;
+	cublasCreate(&cublasHandle);
+
+	curandGenerator_t curandGenerator;
+	curandCreateGenerator(&curandGenerator, CURAND_RNG_PSEUDO_DEFAULT);
+	curandSetPseudoRandomGeneratorSeed(curandGenerator, std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
 	float learningrate = 0.01f;
 	int inHeight = 1024, inWidth = 16, hiddenWidth = 16, hiddenHeight = 1, outWidth = 8, heads = 1;
@@ -66,5 +77,5 @@ int main()
 
 	clu.printParameters();
 
-	return 0;
+	return 0;*/
 }

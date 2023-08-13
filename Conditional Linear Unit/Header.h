@@ -1,7 +1,13 @@
-#pragma once
+﻿﻿#pragma once
+
 #include <iostream>
 #include <vector>
-#include <cassert>
+#include <chrono>
+#include <assert.h>
+
+#include <cublas_v2.h>
+#include <curand.h>
+#include <cuda_runtime.h>
 
 float InvSqrt(float number)
 {
@@ -28,221 +34,30 @@ void PrintTensorf32(uint32_t width, uint32_t height, float* arr, const char* lab
 	}
 }
 
-float RandomFloat()
+__global__ void CurandNormalizef32(float* output, uint32_t size, float min, float range)
 {
-	// from -1 - 1
-	return rand() * 0.00006103515625f - 1.0f;
-
-	// from 0 - 1
-	//return rand() * 0.000030517578125f;
+	uint32_t index = blockIdx.x * blockDim.x + threadIdx.x;
+	if (index < size)
+		output[index] = float(*(uint32_t*)(output + index) * range + min);
 }
 
-float RandomGaussian(float mean, float stddev)
+void CurandGenerateUniformf32(curandGenerator_t generator, float* output, uint32_t size, float min = -1.0f, float max = 1.0f)
 {
-	float x1, x2, w, y1;
-	static float y2;
-	static int use_last = 0;
-
-	if (use_last)
-	{
-		y1 = y2;
-		use_last = 0;
-	}
-	else
-	{
-		do
-		{
-			x1 = RandomFloat();
-			x2 = RandomFloat();
-			w = x1 * x1 + x2 * x2;
-		} while (w >= 1.0f);
-
-		w = sqrt((-2.0f * log(w)) / w);
-		y1 = x1 * w;
-		y2 = x2 * w;
-		use_last = 1;
-	}
-
-	return (mean + y1 * stddev);
+	curandGenerate(generator, (uint32_t*)output, size);
+	CurandNormalizef32 << <std::ceil(0.0009765625f * size), 1024 >> > (output, size, min, (max - min) * 2.3283064365387e-10f);
 }
 
-void cpuSgemmStridedBatched(
-	bool transW, bool transX,
-	// determines the length of dot products
-	int outWidth, int inHeight, int sharedDim,
-	const float* alpha,
-	// determines the number of elements to skip to get to the next row/column and tensor
-	float* W, int WMajorStride, int WTensorStride,
-	float* X, int XMajorStride, int XTensorStride,
-	const float* beta,
-	float* Y, int YMajorStride, int YTensorStride,
-	int batchCount)
+__global__ void GpuReluf32(float* input, float* output, uint32_t size)
 {
-	for (int b = batchCount; b--;)
+	uint32_t index = blockIdx.x * blockDim.x + threadIdx.x;
+	if (index < size && *(uint32_t*)(input + index) >> 31)
 	{
-		for (int m = outWidth; m--;)
-		{
-			for (int n = inHeight; n--;)
-			{
-				float sum = 0;
-				for (int k = sharedDim; k--;)
-				{
-					float a_value = transX ? X[k * XMajorStride + n] : X[n * XMajorStride + k];
-					float b_value = transW ? W[m * WMajorStride + k] : W[k * WMajorStride + m];
-					sum += a_value * b_value;
-				}
-				Y[n * YMajorStride + m] = *alpha * sum + *beta * Y[n * YMajorStride + m];
-			}
-		}
-		X += XTensorStride;
-		W += WTensorStride;
-		Y += YTensorStride;
+		output[index] = 0;
 	}
 }
 
-void cpuSaxpy(
-	int n,
-	const float* alpha,
-	const float* x, int incx,
-	float* y, int incy)
+void CLUForward(float* input, float* output, uint32_t size)
 {
-	for (int i = 0; i < n; i++)
-		y[i * incy] = *alpha * x[i * incx] + y[i * incy];
-}
-
-void cpuBinaryForward(
-	int n,
-	const float* alpha,
-	const float* x,
-	const float* beta,
-	float* y)
-{
-	for (int i = 0; i < n; i++)
-		y[i] = *beta * y[i] + *alpha * (x[i] >= 0);
-		//y[i] = *beta * y[i] + *alpha * ((x[i] > 0) * 0.9 + 0.1);
-}
-
-/*void cpuBinaryBackward(
-	int n,
-	const float* alpha,
-	const float* y,
-	const float* dy,
-	const float* x,
-	const float* beta,
-	float* dx)
-{
-	for (int i = 0; i < n; i++)
-		dx[i] = *beta * dx[i] + *alpha * ((y[i] == 1) * 0.9 + 0.1) * dy[i];
-}*/
-
-void cpuReluForward(
-	int n,
-	const float* alpha,
-	const float* x,
-	const float* beta,
-	float* y)
-{
-	for (int i = 0; i < n; i++)
-		y[i] = *beta * y[i] + (*alpha * x[i] >= 0 ? *alpha * x[i] : 0);
-}
-
-void cpuReluBackward(
-	int n,
-	const float* alpha,
-	const float* y,
-	const float* dy,
-	const float* x,
-	const float* beta,
-	float* dx)
-{
-	for (int i = 0; i < n; i++)
-		dx[i] = *beta * dx[i] + (*alpha * x[i] >= 0 ? *alpha * dy[i] : 0);
-}
-
-void cpuLeakyReluForward(
-	int n,
-	const float* alpha,
-	const float* x,
-	const float* beta,
-	float* y)
-{
-	for (int i = 0; i < n; i++)
-		y[i] = *beta * y[i] + (*alpha * x[i] >= 0 ? *alpha * x[i] : 0.1 * *alpha * x[i]);
-}
-
-void cpuLeakyReluBackward(
-	int n,
-	const float* alpha,
-	const float* y,
-	const float* dy,
-	const float* x,
-	const float* beta,
-	float* dx)
-{
-	for (int i = 0; i < n; i++)
-		dx[i] = *beta * dx[i] + (*alpha * x[i] >= 0 ? *alpha * dy[i] : 0.1 * *alpha * dy[i]);
-}
-
-void cpuGeluForward(
-	int n,
-	const float* alpha,
-	const float* x,
-	const float* beta,
-	float* y)
-{
-	for (int i = 0; i < n; i++)
-	{
-		float gelu = x[i] / (1 + exp(-1.702 * x[i]));
-		y[i] = *beta * y[i] + *alpha * gelu;
-	}
-}
-
-void cpuGeluBackward(
-	int n,
-	const float* alpha,
-	const float* y,
-	const float* dy,
-	const float* x,
-	const float* beta,
-	float* dx)
-{
-	for (int i = 0; i < n; i++)
-	{
-		float z0 = 1.702 * x[i];
-		float z1 = exp(z0);
-		float z2 = z1 + 1;
-		float geluGrad = z1 * (z0 + z1 + 1) / (z2 * z2);
-		dx[i] = *beta * dx[i] + *alpha * geluGrad * dy[i];
-	}
-}
-
-void cpuSigmoidForward(
-	int n,
-	const float* alpha,
-	const float* x,
-	const float* beta,
-	float* y)
-{
-	for (int i = 0; i < n; i++)
-	{
-		float sigmoid = 1 / (1 + exp(-x[i]));
-		y[i] = *beta * y[i] + *alpha * sigmoid;
-	}
-}
-
-void cpuSigmoidBackward(
-	int n,
-	const float* alpha,
-	const float* y,
-	const float* dy,
-	const float* x,
-	const float* beta,
-	float* dx)
-{
-	for (int i = 0; i < n; i++)
-	{
-		float sigmoid = 1 / (1 + exp(-x[i]));
-		float sigmoidGrad = sigmoid * (1 - sigmoid);
-		dx[i] = *beta * dx[i] + *alpha * sigmoidGrad * dy[i];
-	}
+	cudaMemcpy(output, input, size << 2, cudaMemcpyDeviceToDevice);
+	GpuReluf32 << <std::ceil(0.0009765625f * size), 1024 >> > (input, output, size);
 }

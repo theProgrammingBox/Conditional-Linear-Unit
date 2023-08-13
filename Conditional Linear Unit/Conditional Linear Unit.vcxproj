@@ -127,16 +127,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="CLU.cuh" />
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CLU.h" />
     <ClInclude Include="Header.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Header.cuh" />
-    <None Include="Source.cu" />
+    <ClInclude Include="NeuralNetwork.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

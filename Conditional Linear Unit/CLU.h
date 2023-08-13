@@ -1,12 +1,14 @@
 #pragma once
-#include "Header.h"
+#include "Header.cuh"
 
 struct CLU
 {
-	int* inHeight, inWidth, hiddenWidth, hiddenHeight, outWidth, heads;
+	cublasHandle_t* cublasHandle;
+	curandGenerator_t* curandGenerator;
+
+	int inWidth, hiddenWidth, hiddenHeight, outWidth, heads;
 
 	int nonlinearWidth, jointWidth, productWidth, outputSize, batches;
-	float invSqrtInWidth, invsqrtHiddenWidth, invSqrtOutWidth, invSqrtProductWidth, invSqrtInHeight;
 	float expDecayMean, expDecayVar;
 	float beta1, beta2, epsilon;
 
@@ -19,91 +21,87 @@ struct CLU
 
 	CLU
 	(
-		int* inHeight, int inWidth, int hiddenWidth, int hiddenHeight, int outWidth, int heads,
-		float* input, float* outputGrad,
+		cublasHandle_t* cublasHandle, curandGenerator_t* curandGenerator,
+		int inWidth, int hiddenWidth, int hiddenHeight, int outWidth, int heads,
 		float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1e-16f
 	) :
-		// todo: input and outputGrad option for copy from cpu to gpu
-		inHeight(inHeight), inWidth(inWidth),
-		hiddenWidth(hiddenWidth), hiddenHeight(hiddenHeight),
+		cublasHandle(cublasHandle), curandGenerator(curandGenerator),
+		inWidth(inWidth), hiddenWidth(hiddenWidth), hiddenHeight(hiddenHeight),
 		outWidth(outWidth), heads(heads),
-		input(input), outputGrad(outputGrad),
 		beta1(beta1), beta2(beta2), epsilon(epsilon)
+	{
+		expDecayMean = 1.0f;
+		expDecayVar = 1.0f;
+	}
+
+	~CLU()
+	{
+		cudaFree(input);
+		cudaFree(weight);
+		cudaFree(product);
+		cudaFree(bias);
+		cudaFree(output);
+
+		cudaFree(outputGrad);
+		cudaFree(productGrad);
+		cudaFree(biasGrad);
+		cudaFree(inputGrad);
+		cudaFree(weightGrad);
+
+		cudaFree(weightGradMean);
+		cudaFree(weightGradVar);
+		cudaFree(biasGradMean);
+		cudaFree(biasGradVar);
+	}
+
+	int GetSizeCoefficient()
 	{
 		nonlinearWidth = hiddenWidth * hiddenHeight;
 		jointWidth = nonlinearWidth + outWidth * hiddenWidth;
 		productWidth = jointWidth * heads;
 		outputSize = outWidth * hiddenHeight;
-		batches = heads * *inHeight;	// todo
-		// batches is dynamic so define in forward pass, must remain the same for the next backward pass
-
-		invSqrtInWidth = InvSqrt(inWidth);
-		invsqrtHiddenWidth = InvSqrt(hiddenWidth);
-		invSqrtOutWidth = InvSqrt(outWidth);
-		invSqrtProductWidth = InvSqrt(productWidth);
-		invSqrtInHeight = InvSqrt(*inHeight);	// todo
-		// inheight is dynamic so define in forward pass, must remain the same for the next backward pass
-
-		expDecayMean = 1.0f;
-		expDecayVar = 1.0f;
-
-		weight = new float[productWidth * inWidth];
-		product = new float[productWidth * *inHeight];	// todo
-		bias = new float[productWidth];
-		output = new float[outputSize * batches];	// todo
-		// product and output are dynamic so define in compile function where the max is calculated
-
-		productGrad = new float[productWidth * *inHeight];	// todo
-		biasGrad = new float[productWidth];
-		inputGrad = new float[inWidth * *inHeight];	// todo
-		weightGrad = new float[productWidth * inWidth];
-		// productGrad and inputGrad are dynamic so define in compile function where the max is calculated
-
-		weightGradMean = new float[productWidth * inWidth];
-		weightGradVar = new float[productWidth * inWidth];
-		biasGradMean = new float[productWidth];
-		biasGradVar = new float[productWidth];
-
-		for (int i = 0; i < productWidth * inWidth; ++i)
-			weight[i] = RandomFloat();
-		for (int i = 0; i < productWidth; ++i)
-			bias[i] = RandomFloat();
-
-		memset(weightGradMean, 0, productWidth * inWidth * sizeof(float));
-		memset(weightGradVar, 0, productWidth * inWidth * sizeof(float));
-		memset(biasGradMean, 0, productWidth * sizeof(float));
-		memset(biasGradVar, 0, productWidth * sizeof(float));
+		return 2 * productWidth + inWidth + outputSize * heads;
 	}
 
-	~CLU()
+	void Allocate(int maxInHeight)
 	{
-		delete[] weight;
-		delete[] product;
-		delete[] bias;
-		delete[] output;
+		cudaMalloc(&input, inWidth * maxInHeight * sizeof(float));
+		cudaMalloc(&weight, productWidth * inWidth * sizeof(float));
+		cudaMalloc(&product, productWidth * maxInHeight * sizeof(float));
+		cudaMalloc(&bias, productWidth * sizeof(float));
+		cudaMalloc(&output, outputSize * heads * maxInHeight * sizeof(float));
+		
+		cudaMalloc(&outputGrad, outputSize * heads * maxInHeight * sizeof(float));
+		cudaMalloc(&productGrad, productWidth * maxInHeight * sizeof(float));
+		cudaMalloc(&biasGrad, productWidth * sizeof(float));
+		cudaMalloc(&inputGrad, inWidth * maxInHeight * sizeof(float));
+		cudaMalloc(&weightGrad, productWidth * inWidth * sizeof(float));
 
-		delete[] productGrad;
-		delete[] biasGrad;
-		delete[] inputGrad;
-		delete[] weightGrad;
+		cudaMalloc(&weightGradMean, productWidth * inWidth * sizeof(float));
+		cudaMalloc(&weightGradVar, productWidth * inWidth * sizeof(float));
+		cudaMalloc(&biasGradMean, productWidth * sizeof(float));
+		cudaMalloc(&biasGradVar, productWidth * sizeof(float));
 
-		delete[] weightGradMean;
-		delete[] weightGradVar;
-		delete[] biasGradMean;
-		delete[] biasGradVar;
+		CurandGenerateUniformf32(*curandGenerator, weight, productWidth * inWidth);
+		cudaMemset(bias, 0, productWidth * sizeof(float));
+		cudaMemset(weightGradMean, 0, productWidth * inWidth * sizeof(float));
+		cudaMemset(weightGradVar, 0, productWidth * inWidth * sizeof(float));
+		cudaMemset(biasGradMean, 0, productWidth * sizeof(float));
+		cudaMemset(biasGradVar, 0, productWidth * sizeof(float));
 	}
 
-	void forward()
+	/*void Forward(int inHeight)
 	{
-		// dynamic placeholder
+		batches = heads * inHeight;
+		invSqrtInHeight = InvSqrt(inHeight);
 
 		//PrintTensorf32(inWidth, *inHeight, input, "input");
 		//PrintTensorf32(productWidth, inWidth, weight, "weight");
 
-		cpuSgemmStridedBatched
+		cublasSgemmStridedBatched
 		(
 			false, false,
-			productWidth, *inHeight, inWidth,
+			productWidth, inHeight, inWidth,
 			&invSqrtInWidth,
 			weight, productWidth, 0,
 			input, inWidth, 0,
@@ -114,9 +112,9 @@ struct CLU
 		//PrintTensorf32(productWidth, *inHeight, product, "product");
 		//PrintTensorf32(productWidth, 1, bias, "bias");
 
-		for (int i = 0; i < *inHeight; ++i)
+		for (int i = 0; i < inHeight; ++i)
 		{
-			cpuSaxpy
+			cublasSaxpy
 			(
 				productWidth,
 				&one,
@@ -141,7 +139,7 @@ struct CLU
 		//PrintTensorf32(hiddenWidth, hiddenHeight, product, "binary forward", 0, productWidth, *inHeight);
 		//PrintTensorf32(outWidth, hiddenWidth, product + nonlinearWidth, "Linear forward", 0, productWidth, *inHeight);
 
-		cpuSgemmStridedBatched
+		cublasSgemmStridedBatched
 		(
 			false, false,
 			outWidth, hiddenHeight, hiddenWidth,
@@ -155,11 +153,11 @@ struct CLU
 		//PrintTensorf32(outputSize, *inHeight, output, "output");
 	}
 
-	void backward(float learningrate)
+	void Backward(float learningrate)
 	{
 		//PrintTensorf32(outWidth, hiddenHeight, outputGrad, "outputGrad", 0, outputSize, *inHeight);
 
-		cpuSgemmStridedBatched
+		cublasSgemmStridedBatched
 		(
 			true, false,
 			hiddenWidth, hiddenHeight, outWidth,
@@ -172,7 +170,7 @@ struct CLU
 		);
 		//PrintTensorf32(hiddenWidth, hiddenHeight, productGrad, "binaryGrad", 0, productWidth, *inHeight);
 
-		cpuSgemmStridedBatched
+		cublasSgemmStridedBatched
 		(
 			false, true,
 			outWidth, hiddenWidth, hiddenHeight,
@@ -186,26 +184,10 @@ struct CLU
 		//PrintTensorf32(outWidth, hiddenWidth, productGrad + nonlinearWidth, "linearGrad", 0, productWidth, *inHeight);
 		//PrintTensorf32(productWidth, *inHeight, productGrad, "productGrad");
 
-		// did not update this for heads as i am not planning to use it, its just here for completeness
-		/*for (int i = 0; i < *inHeight; ++i)
-		{
-			cpuBinaryBackward
-			(
-				nonlinearWidth,
-				&one,
-				product + i * productWidth,
-				productGrad + i * productWidth,
-				product + i * productWidth,
-				&zero,
-				productGrad + i * productWidth
-			);
-		}*/
-		//PrintTensorf32(productWidth, *inHeight, productGrad, "binaryGrad");
-
 		memset(biasGrad, 0, productWidth * sizeof(float));
 		for (int i = 0; i < *inHeight; ++i)
 		{
-			cpuSaxpy
+			cublasSaxpy
 			(
 				productWidth,
 				&invSqrtInHeight,
@@ -215,7 +197,7 @@ struct CLU
 		}
 		//PrintTensorf32(productWidth, 1, biasGrad, "biasGrad");
 
-		cpuSgemmStridedBatched
+		cublasSgemmStridedBatched
 		(
 			true, false,
 			inWidth, *inHeight, productWidth,
@@ -228,7 +210,7 @@ struct CLU
 		);
 		//PrintTensorf32(inWidth, *inHeight, inputGrad, "inputGrad");
 
-		cpuSgemmStridedBatched
+		cublasSgemmStridedBatched
 		(
 			false, true,
 			productWidth, inWidth, *inHeight,
@@ -269,19 +251,18 @@ struct CLU
 			float finalGradient = gradMeanCorrected * InvSqrt(gradVarCorrected + epsilon);
 			weight[i] += finalGradient * learningrate;
 		}
-	}
+	}*/
 
-	void printParameters() const
+	void PrintParameters() const
 	{
+		/*PrintTensorf32(productWidth, inWidth, weight, "weight");
+		PrintTensorf32(productWidth, 1, bias, "bias");*/
+
+		float* weight = new float[productWidth * inWidth];
+		float* bias = new float[productWidth];
+		cudaMemcpy(weight, this->weight, productWidth * inWidth * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(bias, this->bias, productWidth * sizeof(float), cudaMemcpyDeviceToHost);
 		PrintTensorf32(productWidth, inWidth, weight, "weight");
 		PrintTensorf32(productWidth, 1, bias, "bias");
 	}
-
-	/*void printWork() const
-	{
-		PrintTensorf32(inWidth, *inHeight, input, "input");
-		PrintTensorf32(hiddenWidth, hiddenHeight, product, "binary forward", 0, productWidth, *inHeight);
-		PrintTensorf32(outWidth, hiddenWidth, product + nonlinearWidth, "Linear forward", 0, productWidth, *inHeight);
-		PrintTensorf32(outputSize, *inHeight, output, "output");
-	}*/
 };
