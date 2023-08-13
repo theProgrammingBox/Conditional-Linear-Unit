@@ -19,7 +19,7 @@ Experiments as you scale:
 
 int main()
 {
-	size_t free, total;
+	/*size_t free, total;
 	float* arr;
 
 	cudaDeviceSynchronize();
@@ -38,7 +38,7 @@ int main()
 
 	cudaFree(arr);
 
-	return 0;
+	return 0;*/
 
 	NeuralNetwork nn;
 	nn.ExpectInWidth(16);
