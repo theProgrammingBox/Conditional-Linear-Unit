@@ -41,20 +41,12 @@ struct NeuralNetwork
 
 	void Compile()
 	{
-		layers.front()->input = input;
-		for (int i = 1; i < layers.size() - 1; ++i)
-		{
-			layers[i]->input = layers[i - 1]->output;
-			layers[i - 1]->outputGrad = layers[i]->inputGrad;
-		}
-		layers.back()->outputGrad = outputGrad;
-
 		size_t free, total;
 		cudaMemGetInfo(&free, &total);
 		printf("free: %lu\n", free);
 		printf("total: %lu\n", total);
 
-		int denominator = 0;
+		int denominator = layers.front()->GetInputWidth() + layers.back()->GetOutputWidth();
 		for (int i = 0; i < layers.size(); ++i)
 			denominator += layers[i]->GetSizeCoefficient();
 		printf("denominator: %d\n", denominator);
@@ -64,6 +56,17 @@ struct NeuralNetwork
 
 		for (int i = 0; i < layers.size(); ++i)
 			layers[i]->Allocate(maxInHeight);
+
+		cudaMalloc(&input, sizeof(float) * layers.front()->GetInputWidth() * maxInHeight);
+		cudaMalloc(&outputGrad, sizeof(float) * maxInHeight * layers.back()->GetOutputWidth());
+
+		layers.front()->input = input;
+		for (int i = 1; i < layers.size() - 1; ++i)
+		{
+			layers[i]->input = layers[i - 1]->output;
+			layers[i - 1]->outputGrad = layers[i]->inputGrad;
+		}
+		layers.back()->outputGrad = outputGrad;
 	}
 
 	void Forward(int inHeight, float* input)
@@ -74,6 +77,7 @@ struct NeuralNetwork
 		cudaMemcpy(this->input, input, sizeof(float) * inHeight * layers[0]->inWidth, cudaMemcpyHostToDevice);
 
 		// cuda memcpy gpu to cpu
+
 	}
 
 	void Backward(float learningrate)

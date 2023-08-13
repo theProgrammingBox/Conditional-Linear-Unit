@@ -265,4 +265,14 @@ struct CLU
 		PrintTensorf32(productWidth, inWidth, weight, "weight");
 		PrintTensorf32(productWidth, 1, bias, "bias");
 	}
+
+	int GetInputWidth() const
+	{
+		return inWidth;
+	}
+
+	int GetOutputWidth() const
+	{
+		return outputSize * heads;
+	}
 };
