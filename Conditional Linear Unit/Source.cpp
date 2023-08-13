@@ -20,7 +20,9 @@ Experiments as you scale:
 int main()
 {
 	NeuralNetwork nn;
-	nn.AddLayer(16, 16, 1, 8, 1);
+	nn.Expect(16);
+	nn.AddLayer(16, 8, 8, 8);
+	nn.AddLayer(16, 8, 8, 8);
 	nn.Compile();
 	nn.PrintParameters();
 

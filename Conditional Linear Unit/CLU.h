@@ -6,7 +6,7 @@ struct CLU
 	cublasHandle_t* cublasHandle;
 	curandGenerator_t* curandGenerator;
 
-	int inWidth, hiddenWidth, hiddenHeight, outWidth, heads;
+	int hiddenWidth, hiddenHeight, outWidth, heads;
 
 	int nonlinearWidth, jointWidth, productWidth, outputSize, batches;
 	float expDecayMean, expDecayVar;
@@ -22,11 +22,11 @@ struct CLU
 	CLU
 	(
 		cublasHandle_t* cublasHandle, curandGenerator_t* curandGenerator,
-		int inWidth, int hiddenWidth, int hiddenHeight, int outWidth, int heads,
+		int hiddenWidth, int hiddenHeight, int outWidth, int heads,
 		float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1e-16f
 	) :
 		cublasHandle(cublasHandle), curandGenerator(curandGenerator),
-		inWidth(inWidth), hiddenWidth(hiddenWidth), hiddenHeight(hiddenHeight),
+		hiddenWidth(hiddenWidth), hiddenHeight(hiddenHeight),
 		outWidth(outWidth), heads(heads),
 		beta1(beta1), beta2(beta2), epsilon(epsilon)
 	{
