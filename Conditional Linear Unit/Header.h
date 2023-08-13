@@ -34,6 +34,13 @@ void PrintTensorf32(uint32_t width, uint32_t height, float* arr, const char* lab
 	}
 }
 
+void ErrCheckCudaMalloc(void** devPtr, size_t size, cudaError_t err)
+{
+	err = cudaMalloc(devPtr, size);
+	if (err != cudaSuccess)
+		printf("CUDA error: %s\n", cudaGetErrorString(err));
+}
+
 __global__ void CurandNormalizef32(float* output, uint32_t size, float min, float range)
 {
 	uint32_t index = blockIdx.x * blockDim.x + threadIdx.x;

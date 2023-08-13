@@ -6,7 +6,7 @@ struct CLU
 	cublasHandle_t* cublasHandle;
 	curandGenerator_t* curandGenerator;
 
-	int hiddenWidth, hiddenHeight, outWidth, heads;
+	int inWidth, hiddenWidth, hiddenHeight, outWidth, heads;
 
 	int nonlinearWidth, jointWidth, productWidth, outputSize, batches;
 	float expDecayMean, expDecayVar;
@@ -65,22 +65,37 @@ struct CLU
 
 	void Allocate(int maxInHeight)
 	{
-		cudaMalloc(&input, inWidth * maxInHeight * sizeof(float));
+		cudaError_t err;
+		/*cudaMalloc(&input, inWidth * maxInHeight * sizeof(float));
 		cudaMalloc(&weight, productWidth * inWidth * sizeof(float));
 		cudaMalloc(&product, productWidth * maxInHeight * sizeof(float));
 		cudaMalloc(&bias, productWidth * sizeof(float));
-		cudaMalloc(&output, outputSize * heads * maxInHeight * sizeof(float));
+		cudaMalloc(&output, outputSize * heads * maxInHeight * sizeof(float));*/
+		ErrCheckCudaMalloc((void**)&input, inWidth * maxInHeight * sizeof(float), err);
+		ErrCheckCudaMalloc((void**)&weight, productWidth * inWidth * sizeof(float), err);
+		ErrCheckCudaMalloc((void**)&product, productWidth * maxInHeight * sizeof(float), err);
+		ErrCheckCudaMalloc((void**)&bias, productWidth * sizeof(float), err);
+		ErrCheckCudaMalloc((void**)&output, outputSize * heads * maxInHeight * sizeof(float), err);
 		
-		cudaMalloc(&outputGrad, outputSize * heads * maxInHeight * sizeof(float));
+		/*cudaMalloc(&outputGrad, outputSize * heads * maxInHeight * sizeof(float));
 		cudaMalloc(&productGrad, productWidth * maxInHeight * sizeof(float));
 		cudaMalloc(&biasGrad, productWidth * sizeof(float));
 		cudaMalloc(&inputGrad, inWidth * maxInHeight * sizeof(float));
-		cudaMalloc(&weightGrad, productWidth * inWidth * sizeof(float));
+		cudaMalloc(&weightGrad, productWidth * inWidth * sizeof(float));*/
+		ErrCheckCudaMalloc((void**)&outputGrad, outputSize * heads * maxInHeight * sizeof(float), err);
+		ErrCheckCudaMalloc((void**)&productGrad, productWidth * maxInHeight * sizeof(float), err);
+		ErrCheckCudaMalloc((void**)&biasGrad, productWidth * sizeof(float), err);
+		ErrCheckCudaMalloc((void**)&inputGrad, inWidth * maxInHeight * sizeof(float), err);
+		ErrCheckCudaMalloc((void**)&weightGrad, productWidth * inWidth * sizeof(float), err);
 
-		cudaMalloc(&weightGradMean, productWidth * inWidth * sizeof(float));
+		/*cudaMalloc(&weightGradMean, productWidth * inWidth * sizeof(float));
 		cudaMalloc(&weightGradVar, productWidth * inWidth * sizeof(float));
 		cudaMalloc(&biasGradMean, productWidth * sizeof(float));
-		cudaMalloc(&biasGradVar, productWidth * sizeof(float));
+		cudaMalloc(&biasGradVar, productWidth * sizeof(float));*/
+		ErrCheckCudaMalloc((void**)&weightGradMean, productWidth * inWidth * sizeof(float), err);
+		ErrCheckCudaMalloc((void**)&weightGradVar, productWidth * inWidth * sizeof(float), err);
+		ErrCheckCudaMalloc((void**)&biasGradMean, productWidth * sizeof(float), err);
+		ErrCheckCudaMalloc((void**)&biasGradVar, productWidth * sizeof(float), err);
 
 		CurandGenerateUniformf32(*curandGenerator, weight, productWidth * inWidth);
 		cudaMemset(bias, 0, productWidth * sizeof(float));

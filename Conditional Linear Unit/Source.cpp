@@ -19,12 +19,34 @@ Experiments as you scale:
 
 int main()
 {
+	size_t free, total;
+	float* arr;
+
+	cudaDeviceSynchronize();
+	cudaMemGetInfo(&free, &total);
+	printf("free: %lu\n", free);
+	printf("total: %lu\n", total);
+
+	cudaError_t err = cudaMalloc(&arr, free);
+	if (err != cudaSuccess)
+		printf("CUDA error: %s\n", cudaGetErrorString(err));
+
+	cudaDeviceSynchronize();
+	cudaMemGetInfo(&free, &total);
+	printf("free: %lu\n", free);
+	printf("total: %lu\n", total);
+
+	cudaFree(arr);
+
+	return 0;
+
 	NeuralNetwork nn;
-	nn.Expect(16);
+	nn.ExpectInWidth(16);
+	nn.ExpectOutWidth(8);
 	nn.AddLayer(16, 8, 8, 8);
-	nn.AddLayer(16, 8, 8, 8);
+	nn.AddLayer(16, 1, 8, 1);
 	nn.Compile();
-	nn.PrintParameters();
+	//nn.PrintParameters();
 
 	return 0;
 	/*cublasHandle_t cublasHandle;

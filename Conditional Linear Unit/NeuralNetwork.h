@@ -6,7 +6,7 @@ struct NeuralNetwork
 	cublasHandle_t cublasHandle;
 	curandGenerator_t curandGenerator;
 
-	int inWidth;
+	int inWidth, outWidth;
 	int maxInHeight;
 	float* input, * outputGrad;
 	std::vector<CLU*> layers;
@@ -28,9 +28,14 @@ struct NeuralNetwork
 			delete layers[i];
 	}
 
-	void Expect(int inWidth)
+	void ExpectInWidth(int inWidth)
 	{
 		this->inWidth = inWidth;
+	}
+
+	void ExpectOutWidth(int outWidth)
+	{
+		this->outWidth = outWidth;
 	}
 
 	void AddLayer(int hiddenWidth, int hiddenHeight, int outWidth, int heads)
@@ -47,6 +52,10 @@ struct NeuralNetwork
 
 	void Compile()
 	{
+		layers.front()->inWidth = inWidth;
+		for (int i = 1; i < layers.size() - 1; ++i)
+			layers[i]->inWidth = layers[i - 1]->GetOutputWidth();
+
 		size_t free, total;
 		cudaMemGetInfo(&free, &total);
 		printf("free: %lu\n", free);
@@ -66,15 +75,19 @@ struct NeuralNetwork
 		cudaMalloc(&input, layers.front()->GetInputWidth() * maxInHeight * sizeof(float));
 		cudaMalloc(&outputGrad, layers.back()->GetOutputWidth() * maxInHeight * sizeof(float));
 
+		cudaMemGetInfo(&free, &total);
+		printf("free: %lu\n", free);
+		printf("total: %lu\n", total);
+
 		layers.front()->input = input;
-		layers.front()->inWidth = inWidth;
 		for (int i = 1; i < layers.size() - 1; ++i)
 		{
 			layers[i]->input = layers[i - 1]->output;
 			layers[i - 1]->outputGrad = layers[i]->inputGrad;
-			layers[i]->inWidth = layers[i - 1]->GetOutputWidth();
 		}
 		layers.back()->outputGrad = outputGrad;
+
+		assert(layers.back()->GetOutputWidth() == outWidth);
 	}
 
 	float* Forward(int inHeight, float* input)
