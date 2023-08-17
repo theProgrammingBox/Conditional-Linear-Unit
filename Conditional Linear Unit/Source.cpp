@@ -24,10 +24,13 @@ int main()
 		return EXIT_FAILURE;
 	}
 
+	float learningrate = 0.01f;
+	size_t batches = 16;
+
 	CLU clu
 	(
-		&cublasHandle, &curandGenerator,
-		16, 1, 8, 1
+		&cublasHandle, &curandGenerator, &learningrate,
+		&batches, 16, 1, 8, 1
 	);
 
 	printf("CLU\n");
