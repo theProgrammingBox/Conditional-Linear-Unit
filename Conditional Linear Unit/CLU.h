@@ -34,7 +34,7 @@ struct CLU : public Layer
 		this->deviceInputTensor = deviceInputTensor;
 
 		//cudaMalloc((void**)&deviceWeightTensor, productWidth * sizeof(float));
-		gpuMemoryManager.ManageStatic(&deviceWeightTensor, productWidth);
+		gpuMemoryManager.ManageStatic(&deviceWeightTensor, productWidth * *inputWidth);
 		gpuMemoryManager.ManageDynamic(&deviceProductTensor, productWidth);
 		gpuMemoryManager.ManageDynamic(&deviceResultTensor, outputWidth);
 	}
