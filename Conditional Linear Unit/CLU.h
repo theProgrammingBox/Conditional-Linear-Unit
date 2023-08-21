@@ -1,7 +1,7 @@
 #pragma once
-#include "GpuMemoryManager.cuh"
+#include "Layer.cuh"
 
-struct CLU
+struct CLU : public Layer
 {
 	cublasHandle_t* cublasHandle;
 	curandGenerator_t* curandGenerator;
@@ -28,21 +28,15 @@ struct CLU
 		outputWidth = resultSize * heads;
 	}
 
-	~CLU()
-	{
-		cudaFree(deviceWeightTensor);
-		cudaFree(deviceProductTensor);
-		cudaFree(deviceResultTensor);
-	}
-
 	void Initialize(size_t* inputWidth, float* deviceInputTensor, GpuMemoryManager& gpuMemoryManager)
 	{
 		this->inputWidth = inputWidth;
 		this->deviceInputTensor = deviceInputTensor;
 
 		//cudaMalloc((void**)&deviceWeightTensor, productWidth * sizeof(float));
-		gpuMemoryManager.Manage(&deviceProductTensor, productWidth);
-		gpuMemoryManager.Manage(&deviceResultTensor, outputWidth);
+		gpuMemoryManager.ManageStatic(&deviceWeightTensor, productWidth);
+		gpuMemoryManager.ManageDynamic(&deviceProductTensor, productWidth);
+		gpuMemoryManager.ManageDynamic(&deviceResultTensor, outputWidth);
 	}
 
 	void Forward()

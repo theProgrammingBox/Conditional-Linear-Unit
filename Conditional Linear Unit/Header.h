@@ -9,7 +9,3 @@
 #include <cublas_v2.h>
 #include <curand.h>
 #include <cuda_runtime.h>
-
-typedef uint32_t u32;
-typedef int8_t i8;
-typedef float f32;

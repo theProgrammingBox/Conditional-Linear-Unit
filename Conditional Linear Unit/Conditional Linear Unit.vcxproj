@@ -133,6 +133,7 @@
     <ClInclude Include="CLU.h" />
     <ClInclude Include="GpuMemoryManager.h" />
     <ClInclude Include="Header.h" />
+    <ClInclude Include="Layer.h" />
     <ClInclude Include="NeuralNetwork.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

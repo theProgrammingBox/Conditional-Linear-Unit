@@ -16,7 +16,8 @@ struct GpuMemoryManager
 	};
 
 	std::vector<MemFrag*> MemFrags;
-	std::vector<TensorData*> tensorPtrs;
+	std::vector<TensorData*> dynamicTensor;
+	std::vector<TensorData*> staticTensor;
 
 	GpuMemoryManager()
 	{
@@ -70,11 +71,19 @@ struct GpuMemoryManager
 		printf("\n");
 	}
 
-	void Manage(float** tensorPtr, size_t size)
+	void ManageDynamic(float** tensorPtr, size_t size)
 	{
 		TensorData* tensorData = new TensorData;
 		tensorData->address = tensorPtr;
 		tensorData->size = size;
-		tensorPtrs.emplace_back(tensorData);
+		dynamicTensor.emplace_back(tensorData);
+	}
+
+	void ManageStatic(float** tensorPtr, size_t size)
+	{
+		TensorData* tensorData = new TensorData;
+		tensorData->address = tensorPtr;
+		tensorData->size = size;
+		staticTensor.emplace_back(tensorData);
 	}
 };
