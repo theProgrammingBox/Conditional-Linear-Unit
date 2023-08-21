@@ -9,7 +9,14 @@ struct GpuMemoryManager
 		float* address;
 	};
 
+	struct TensorData
+	{
+		float** address;
+		size_t size;
+	};
+
 	std::vector<MemFrag*> MemFrags;
+	std::vector<TensorData*> tensorPtrs;
 
 	GpuMemoryManager()
 	{
@@ -52,9 +59,22 @@ struct GpuMemoryManager
 		}
 	}
 
-	void PrintGpuMem()
+	void PrintGpuMem() const
 	{
 		for (MemFrag* frag : MemFrags)
 			printf("Allocated %zu bytes at %p\n", frag->size, frag->address);
+		printf("\n");
+
+		for (TensorData* tensorData : tensorPtrs)
+			printf("Tensor at %p with size %zu\n", tensorData->address, tensorData->size);
+		printf("\n");
+	}
+
+	void Manage(float** tensorPtr, size_t size)
+	{
+		TensorData* tensorData = new TensorData;
+		tensorData->address = tensorPtr;
+		tensorData->size = size;
+		tensorPtrs.emplace_back(tensorData);
 	}
 };

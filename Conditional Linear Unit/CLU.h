@@ -35,18 +35,14 @@ struct CLU
 		cudaFree(deviceResultTensor);
 	}
 
-	void GatherCoefficients(std::vector<uint32_t>& coefficients)
-	{
-		coefficients.emplace_back(productWidth);
-		coefficients.emplace_back(outputWidth);
-	}
-
-	void Initialize(size_t* inputWidth, float* deviceInputTensor)
+	void Initialize(size_t* inputWidth, float* deviceInputTensor, GpuMemoryManager& gpuMemoryManager)
 	{
 		this->inputWidth = inputWidth;
 		this->deviceInputTensor = deviceInputTensor;
 
-		cudaMalloc((void**)&deviceWeightTensor, productWidth * sizeof(float));
+		//cudaMalloc((void**)&deviceWeightTensor, productWidth * sizeof(float));
+		gpuMemoryManager.Manage(&deviceProductTensor, productWidth);
+		gpuMemoryManager.Manage(&deviceResultTensor, outputWidth);
 	}
 
 	void Forward()

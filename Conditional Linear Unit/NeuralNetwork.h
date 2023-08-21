@@ -62,27 +62,15 @@ struct NeuralNetwork
 		this->inputWidth = inputWidth;
 		assert(outputWidth == *layers.back()->GetOutputWidth());
 
-		std::vector<uint32_t> coefficients;
-		coefficients.push_back(inputWidth);
-		for (CLU* layer : layers)
-			layer->GatherCoefficients(coefficients);
-
-		printf("Coefficients: ");
-		for (uint32_t coefficient : coefficients)
-			printf("%d ", coefficient);
-		printf("\n");
-
 		GpuMemoryManager gpuMemoryManager;
-		gpuMemoryManager.PrintGpuMem();
 
-		std::vector<float> gpuMemoryRatio;
-		std::vector<float> spaceRatio;
+		gpuMemoryManager.Manage(&deviceInputTensor, inputWidth);
 
-		// get max and init deviceInputTensor and layers output
-
-		layers.front()->Initialize(&(this->inputWidth), deviceInputTensor);
+		layers.front()->Initialize(&(this->inputWidth), deviceInputTensor, gpuMemoryManager);
 		for (size_t i = 1; i < layers.size(); i++)
-			layers[i]->Initialize(layers[i - 1]->GetOutputWidth(), layers[i - 1]->GetOutputTensor());
+			layers[i]->Initialize(layers[i - 1]->GetOutputWidth(), layers[i - 1]->GetOutputTensor(), gpuMemoryManager);
+
+		gpuMemoryManager.PrintGpuMem();
 	}
 
 	void Forward()
