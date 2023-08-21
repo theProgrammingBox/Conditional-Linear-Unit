@@ -131,6 +131,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CLU.h" />
+    <ClInclude Include="GpuMemoryManager.h" />
     <ClInclude Include="Header.h" />
     <ClInclude Include="NeuralNetwork.h" />
   </ItemGroup>

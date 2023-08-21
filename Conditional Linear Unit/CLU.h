@@ -1,5 +1,5 @@
 #pragma once
-#include "Header.cuh"
+#include "GpuMemoryManager.cuh"
 
 struct CLU
 {
@@ -18,8 +18,8 @@ struct CLU
 		cublasHandle_t* cublasHandle, curandGenerator_t* curandGenerator, float* learningrate, size_t* inputHeight,
 		size_t hiddenHeight, size_t hiddenWidth, size_t resultWidth, size_t heads
 	) :
-		cublasHandle(cublasHandle), curandGenerator(curandGenerator), learningrate(learningrate),
-		inputHeight(inputHeight), hiddenHeight(hiddenHeight), hiddenWidth(hiddenWidth), resultWidth(resultWidth), heads(heads)
+		cublasHandle(cublasHandle), curandGenerator(curandGenerator), learningrate(learningrate), inputHeight(inputHeight),
+		hiddenHeight(hiddenHeight), hiddenWidth(hiddenWidth), resultWidth(resultWidth), heads(heads)
 	{
 		nonlinearWidth = hiddenWidth * hiddenHeight;
 		integratedWidth = nonlinearWidth + resultWidth * hiddenWidth;
@@ -30,21 +30,31 @@ struct CLU
 
 	~CLU()
 	{
+		cudaFree(deviceWeightTensor);
+		cudaFree(deviceProductTensor);
+		cudaFree(deviceResultTensor);
+	}
+
+	void GatherCoefficients(std::vector<uint32_t>& coefficients)
+	{
+		coefficients.emplace_back(productWidth);
+		coefficients.emplace_back(outputWidth);
 	}
 
 	void Initialize(size_t* inputWidth, float* deviceInputTensor)
 	{
 		this->inputWidth = inputWidth;
 		this->deviceInputTensor = deviceInputTensor;
-		//deviceWeightTensor = (float*)malloc(sizeof(float) * productWidth * inputWidth[0]);
+
+		cudaMalloc((void**)&deviceWeightTensor, productWidth * sizeof(float));
 	}
 
 	void Forward()
 	{
-		const float alpha = 1.0f;
+		/*const float alpha = 1.0f;
 		const float beta = 0.0f;
 
-		/*cublasSgemm
+		cublasSgemm
 		(
 			cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
 			productWidth, *inHeight, *inWidth,

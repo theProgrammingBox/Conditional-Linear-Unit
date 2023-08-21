@@ -1,7 +1,5 @@
 #include "NeuralNetwork.cuh"
 
-// rename tensors to tensors
-
 int main()
 {
 	float learningrate = 0.01f;
