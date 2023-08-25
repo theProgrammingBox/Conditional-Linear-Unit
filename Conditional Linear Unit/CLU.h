@@ -3,75 +3,38 @@
 
 struct CLU : public Layer
 {
-	cublasHandle_t* cublasHandle;
-	curandGenerator_t* curandGenerator;
-
-	size_t* inputHeight, * inputWidth;
 	size_t hiddenHeight, hiddenWidth, resultWidth, heads;
-	size_t nonlinearWidth, integratedWidth, productWidth, resultSize, outputWidth;
-	float* learningrate;
+	size_t nonlinearWidth, integratedWidth, productWidth, resultSize;
 
-	float* deviceInputTensor, * deviceWeightTensor, * deviceProductTensor, * deviceResultTensor;
+	float* deviceWeightTensor, * deviceBiasTensor;
+	float* deviceProductTensor;
 
-	CLU
-	(
-		cublasHandle_t* cublasHandle, curandGenerator_t* curandGenerator, float* learningrate, size_t* inputHeight,
-		size_t hiddenHeight, size_t hiddenWidth, size_t resultWidth, size_t heads
-	) :
-		cublasHandle(cublasHandle), curandGenerator(curandGenerator), learningrate(learningrate), inputHeight(inputHeight),
-		hiddenHeight(hiddenHeight), hiddenWidth(hiddenWidth), resultWidth(resultWidth), heads(heads)
+	CLU(size_t hiddenWidth, size_t hiddenHeight, size_t resultWidth, size_t heads) :
+		hiddenWidth(hiddenWidth), hiddenHeight(hiddenHeight), resultWidth(resultWidth), heads(heads)
 	{
-		nonlinearWidth = hiddenWidth * hiddenHeight;
-		integratedWidth = nonlinearWidth + resultWidth * hiddenWidth;
+		nonlinearWidth = hiddenHeight * hiddenWidth;
+		integratedWidth = nonlinearWidth + hiddenWidth * resultWidth;
 		productWidth = integratedWidth * heads;
-		resultSize = resultWidth * hiddenWidth;
+		resultSize = hiddenHeight * resultWidth;
 		outputWidth = resultSize * heads;
 	}
 
-	void Initialize(size_t* inputWidth, float* deviceInputTensor, GpuMemoryManager& gpuMemoryManager)
+	void Initialize(size_t* inputWidth, GpuMemoryManager* gpuMemoryManager)
 	{
-		this->inputWidth = inputWidth;
-		this->deviceInputTensor = deviceInputTensor;
+		gpuMemoryManager->ManageStatic(&deviceWeightTensor, *inputWidth * productWidth);
+		gpuMemoryManager->ManageStatic(&deviceBiasTensor, productWidth);
 
-		//cudaMalloc((void**)&deviceWeightTensor, productWidth * sizeof(float));
-		gpuMemoryManager.ManageStatic(&deviceWeightTensor, productWidth * *inputWidth);
-		gpuMemoryManager.ManageDynamic(&deviceProductTensor, productWidth);
-		gpuMemoryManager.ManageDynamic(&deviceResultTensor, outputWidth);
+		gpuMemoryManager->ManageDynamic(&deviceProductTensor, productWidth);
+		gpuMemoryManager->ManageDynamic(&deviceOutputTensor, outputWidth);
 	}
 
-	void Forward()
+	void Forward() override
 	{
-		/*const float alpha = 1.0f;
-		const float beta = 0.0f;
-
-		cublasSgemm
-		(
-			cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
-			productWidth, *inHeight, *inWidth,
-			&alpha,
-			deviceWeightTensor, productWidth,
-			deviceInputTensor, inWidth,
-			&beta,
-			deviceProductTensor, productWidth
-		);*/
+		size_t resultLength = *batches * heads;
 	}
 
-	void Backward()
+	void Backward() override
 	{
-		
-	}
-
-	void PrintParameters() const
-	{
-	}
-
-	size_t* GetOutputWidth()
-	{
-		return &outputWidth;
-	}
-
-	float* GetOutputTensor()
-	{
-		return deviceResultTensor;
+		size_t resultLength = *batches * heads;
 	}
 };

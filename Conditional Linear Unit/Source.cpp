@@ -2,22 +2,21 @@
 
 int main()
 {
+	float* hostInputTensor, * hostOutputTensor;
+	float* hostOutputGradientTensor, * hostInputGradientTensor;
 	float learningrate = 0.01f;
 	size_t batches = 16;
 	size_t inputWidth = 16;
 	size_t outputWidth = 8;
 
-	float* hostInputTensor, * hostOutputTensor;
-	float* hostOutputGradientTensor, * hostInputGradientTensor;
-
 	NeuralNetwork neuralNetwork
 	(
-		&learningrate, &batches,
 		hostInputTensor, hostOutputTensor,
-		hostOutputGradientTensor, hostInputGradientTensor
+		hostOutputGradientTensor, hostInputGradientTensor,
+		&learningrate, &batches
 	);
-	neuralNetwork.AddLayer(16, 1, outputWidth, 1);
-	neuralNetwork.Initialize(inputWidth, outputWidth);
+	neuralNetwork.AddLayer(new CLU(inputWidth, 1, outputWidth, 1));
+	neuralNetwork.Initialize(&inputWidth, &outputWidth);
 
 	printf("CLU\n");
 

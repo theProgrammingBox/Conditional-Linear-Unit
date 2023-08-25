@@ -3,9 +3,17 @@
 #include <stdlib.h>	// malloc
 #include <time.h>	// time
 #include <stdint.h>	// uint32_t
-#include <assert.h>	// assert
 #include <vector>
 
 #include <cublas_v2.h>
 #include <curand.h>
 #include <cuda_runtime.h>
+
+void FailIf(bool condition, const char* message)
+{
+	if (condition)
+	{
+		fprintf(stderr, "%s", message);
+		exit(0);
+	}
+}
