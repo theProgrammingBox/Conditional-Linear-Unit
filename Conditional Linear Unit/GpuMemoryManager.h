@@ -126,12 +126,12 @@ struct GpuMemoryManager
 
 			if (smallestRatio > largestRatio)
 			{
-				printf("New best ratio: %f\n\n", smallestRatio);
+				printf("New best ratio: %f\n", smallestRatio);
 				if (dynamicSize > 0)
 					largestN = size / dynamicSize;
 				largestRatio = smallestRatio;
 
-				printf("largestN: %zu\n\n", largestN);
+				printf("largestN: %zu\n", largestN);
 				printf("left over: %zu\n\n", size - largestN * dynamicSize);
 
 				for (size_t i = 0; i < staticTensors.size(); ++i)

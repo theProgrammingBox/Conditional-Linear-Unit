@@ -21,6 +21,8 @@ struct CLU : public Layer
 
 	void Initialize(size_t* inputWidth, GpuMemoryManager* gpuMemoryManager)
 	{
+		this->inputWidth = inputWidth;
+
 		gpuMemoryManager->ManageStatic(&deviceWeightTensor, *inputWidth * productWidth);
 		gpuMemoryManager->ManageStatic(&deviceBiasTensor, productWidth);
 

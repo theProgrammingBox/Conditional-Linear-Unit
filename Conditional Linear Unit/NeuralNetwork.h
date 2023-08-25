@@ -67,9 +67,11 @@ struct NeuralNetwork
 
 	void Forward()
 	{
+		FailIf(*batches > maxBatches, "*batches > maxBatches");
 	}
 
 	void Backward()
 	{
+		FailIf(*batches > maxBatches, "*batches > maxBatches");
 	}
 };
