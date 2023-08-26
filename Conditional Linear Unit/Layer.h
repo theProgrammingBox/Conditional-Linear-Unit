@@ -4,7 +4,6 @@
 struct Layer
 {
 	cublasHandle_t* cublasHandle;
-	curandGenerator_t* curandGenerator;
 
 	size_t* batches, * inputWidth, outputWidth;
 	float* learningrate;
@@ -14,4 +13,5 @@ struct Layer
 	virtual void Initialize(size_t* inputWidth, GpuMemoryManager* gpuMemoryManager) = 0;
 	virtual void Forward() = 0;
 	virtual void Backward() = 0;
+	virtual void PrintParameters() = 0;
 };

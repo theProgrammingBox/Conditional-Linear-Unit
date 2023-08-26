@@ -185,11 +185,13 @@ struct GpuMemoryManager
 		for (auto& memoryPtr : availableMemory)
 			memoryPtr->dynamicSize = 0;
 
+		GpuRand gpuRand;
 		for (size_t i = 0; i < staticTensors.size(); ++i)
 		{
 			MemoryData* memoryPtr = bestCombination[i];
 			*staticTensors[i]->address = memoryPtr->address + memoryPtr->dynamicSize;
 			memoryPtr->dynamicSize += staticTensors[i]->size;
+			gpuRand.Randomize(*staticTensors[i]->address, staticTensors[i]->size);
 		}
 
 		for (size_t i = 0; i < dynamicTensors.size(); ++i)

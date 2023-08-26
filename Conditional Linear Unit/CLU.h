@@ -39,4 +39,16 @@ struct CLU : public Layer
 	{
 		size_t resultLength = *batches * heads;
 	}
+
+	void PrintParameters()
+	{
+		float* weightTensor = new float[*inputWidth * productWidth];
+		float* biasTensor = new float[productWidth];
+
+		cudaMemcpy(weightTensor, deviceWeightTensor, *inputWidth * productWidth * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(biasTensor, deviceBiasTensor, productWidth * sizeof(float), cudaMemcpyDeviceToHost);
+
+		PrintTensorf32(productWidth, *inputWidth, weightTensor, "Weight Tensor");
+		PrintTensorf32(productWidth, 1, biasTensor, "Bias Tensor");
+	}
 };
