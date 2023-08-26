@@ -1,21 +1,16 @@
 #include "NeuralNetwork.cuh"
 
+/*
+TODO:
+- init host tensors
+- Work on forward pass
+- Work on forward scalars
+- Work on gpu rand kernel range
+- Work on backward pass
+*/
+
 int main()
 {
-	/*// malloc gpu arr for 10 elements
-	float* deviceArr;
-	cudaMalloc(&deviceArr, 10 * sizeof(float));
-
-	// randomize
-	GpuRand gpuRand;
-	gpuRand.Randomize(deviceArr, 10);
-
-	// print gpu arr
-	float* hostArr = (float*)malloc(10 * sizeof(float));
-	cudaMemcpy(hostArr, deviceArr, 10 * sizeof(float), cudaMemcpyDeviceToHost);
-	PrintTensorf32(10, 1, hostArr, "deviceArr");
-	return 0;*/
-
 	float* hostInputTensor, * hostOutputTensor;
 	float* hostOutputGradientTensor, * hostInputGradientTensor;
 	float learningrate = 0.01f;
@@ -29,7 +24,8 @@ int main()
 		hostOutputGradientTensor, hostInputGradientTensor,
 		&learningrate, &batches
 	);
-	neuralNetwork.AddLayer(new CLU(inputWidth, 1, outputWidth, 1));
+	neuralNetwork.AddLayer(new CLU(16, 4, 4, 2));
+	neuralNetwork.AddLayer(new CLU(16, 1, outputWidth, 1));
 	neuralNetwork.Initialize(&inputWidth, &outputWidth);
 	neuralNetwork.PrintParameters();
 

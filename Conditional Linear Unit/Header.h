@@ -41,14 +41,15 @@ __global__ void gpuRandFunc(float* arr, uint32_t size, uint32_t seed1, uint32_t 
 	uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
 	if (idx < size)
 	{
-		uint32_t index = idx ^ seed1;
+		uint32_t index = idx;
 
+		index ^= seed1;
 		index *= 0xBAC57D37;
 		index ^= index >> 16;
+		index ^= seed2;
 		index *= 0x24F66AC9;
 		index ^= index >> 16;
 
-		index ^= seed2;
 		arr[idx] = index * 0.00000000023283064365386962890625f;
 	}
 }
@@ -69,7 +70,8 @@ struct GpuRand
 	{
 		uint32_t seed1 = time(NULL) ^ 0xE621B963;
 		Lehmer32(seed1);
-		uint32_t seed2 = seed1 ^ 0x6053653F;
+		Lehmer32(seed1);
+		uint32_t seed2 = seed1 ^ 0x6053653F ^ (time(NULL) >> 32);
 		Lehmer32(seed2);
 
 		printf("Seed1: %u\n", seed1);
