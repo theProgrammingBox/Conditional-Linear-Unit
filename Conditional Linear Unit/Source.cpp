@@ -2,12 +2,12 @@
 
 /*
 TODO:
-- init host tensors
 - Work on forward pass
 - Work on forward scalars
 - Move gpu rand to a new header file
 - Work on gpu rand kernel range
 - Work on backward pass
+-- add their dev tensors
 */
 
 int main()

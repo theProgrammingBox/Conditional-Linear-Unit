@@ -35,6 +35,17 @@ struct NeuralNetwork
 		gpuMemoryManager.Init();
 	}
 
+	~NeuralNetwork()
+	{
+		cublasStatus_t cublasStatus;
+		cublasStatus = cublasDestroy(cublasHandle);
+		FailIf(cublasStatus != CUBLAS_STATUS_SUCCESS, "cublasDestroy failed");
+		delete[] hostInputTensor;
+		delete[] hostOutputTensor;
+		delete[] hostOutputGradientTensor;
+		delete[] hostInputGradientTensor;
+	}
+
 	void AddLayer(Layer* layer)
 	{
 		layer->cublasHandle = &cublasHandle;
