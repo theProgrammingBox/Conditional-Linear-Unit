@@ -46,7 +46,7 @@ struct NeuralNetwork
 	void Initialize(size_t* inputWidth, size_t* outputWidth)
 	{
 		FailIf(*outputWidth != layers.back()->outputWidth, "outputWidth != layers.back()->outputWidth");
-		
+
 		gpuMemoryManager.ManageDynamic(&deviceInputTensor, *inputWidth);
 		layers.front()->Initialize(inputWidth, &gpuMemoryManager);
 		for (size_t i = 1; i < layers.size(); i++)
@@ -54,6 +54,12 @@ struct NeuralNetwork
 
 		gpuMemoryManager.Allocate(maxBatches);
 		printf("maxBatches: %zu\n\n", maxBatches);
+
+		// allocating host tensors
+		hostInputTensor = new float[*inputWidth * *batches];
+		hostOutputTensor = new float[*outputWidth * *batches];
+		hostOutputGradientTensor = new float[*outputWidth * *batches];
+		hostInputGradientTensor = new float[*inputWidth * *batches];
 	}
 
 	void Forward()

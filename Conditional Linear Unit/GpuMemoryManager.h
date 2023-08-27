@@ -190,7 +190,7 @@ struct GpuMemoryManager
 		{
 			MemoryData* memoryPtr = bestCombination[i];
 			*staticTensors[i]->address = memoryPtr->address + memoryPtr->dynamicSize;
-			memoryPtr->dynamicSize += staticTensors[i]->size - 1;
+			memoryPtr->dynamicSize += staticTensors[i]->size;
 			gpuRand.Randomize(*staticTensors[i]->address, staticTensors[i]->size);
 		}
 
