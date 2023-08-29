@@ -52,6 +52,15 @@ struct CLU : public Layer
 			&beta,
 			deviceProductTensor, productWidth
 		);
+
+		float* hostInputTensor = new float[*inputWidth * *batches];
+		float* hostProductTensor = new float[productWidth * *batches];
+
+		cudaMemcpy(hostInputTensor, deviceInputTensor, *inputWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(hostProductTensor, deviceProductTensor, productWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
+
+		PrintTensorf32(*inputWidth, *batches, hostInputTensor, "Input Tensor");
+		PrintTensorf32(productWidth, *batches, hostProductTensor, "Product Tensor");
 	}
 
 	void Backward() override

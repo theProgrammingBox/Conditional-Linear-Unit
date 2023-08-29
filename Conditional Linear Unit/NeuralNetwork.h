@@ -69,6 +69,10 @@ struct NeuralNetwork
 		gpuMemoryManager.Allocate(maxBatches);
 		printf("maxBatches: %zu\n\n", maxBatches);
 
+		layers.front()->deviceInputTensor = deviceInputTensor;
+		for (size_t i = 1; i < layers.size(); i++)
+			layers[i]->deviceInputTensor = layers[i - 1]->deviceOutputTensor;
+
 		this->hostInputTensor = new float[*inputWidth * maxBatches];
 		this->hostOutputTensor = new float[*outputWidth * maxBatches];
 		this->hostOutputGradientTensor = new float[*outputWidth * maxBatches];

@@ -32,7 +32,9 @@ int main()
 	);
 	neuralNetwork.PrintParameters();
 
-	memset(hostInputTensor, 0, sizeof(float) * batches * inputWidth);
+	//memset(hostInputTensor, 0, sizeof(float) * batches * inputWidth);
+	for (size_t i = 0; i < batches * inputWidth; i++)
+		hostInputTensor[i] = i / float(batches * inputWidth);
 	memset(hostOutputGradientTensor, 0, sizeof(float) * batches * outputWidth);
 
 	neuralNetwork.Forward();
