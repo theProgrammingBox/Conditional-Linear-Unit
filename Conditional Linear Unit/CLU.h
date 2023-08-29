@@ -9,8 +9,13 @@ struct CLU : public Layer
 	float* deviceWeightTensor, * deviceBiasTensor;
 	float* deviceProductTensor;
 
-	CLU(size_t hiddenWidth, size_t hiddenHeight, size_t resultWidth, size_t heads) :
-		hiddenWidth(hiddenWidth), hiddenHeight(hiddenHeight), resultWidth(resultWidth), heads(heads)
+	CLU
+	(
+		size_t hiddenWidth, size_t hiddenHeight, size_t resultWidth, size_t heads,
+		float* learningrate, size_t* batches
+	) :
+		hiddenWidth(hiddenWidth), hiddenHeight(hiddenHeight), resultWidth(resultWidth), heads(heads),
+		Layer(learningrate, batches)
 	{
 		nonlinearWidth = hiddenHeight * hiddenWidth;
 		integratedWidth = nonlinearWidth + hiddenWidth * resultWidth;
