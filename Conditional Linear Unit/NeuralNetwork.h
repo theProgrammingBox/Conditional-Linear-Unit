@@ -87,27 +87,26 @@ struct NeuralNetwork
 
 	void Forward()
 	{
-		printf("CLU1\n");
-		/*FailIf(*batches > maxBatches, "*batches > maxBatches");
+		FailIf(*batches > maxBatches, "*batches > maxBatches");
 
 		cudaMemcpy(deviceInputTensor, hostInputTensor, *inputWidth * *batches * sizeof(float), cudaMemcpyHostToDevice);
 
 		for (size_t i = 0; i < layers.size(); i++)
-			layers[i]->Forward();*/
+			layers[i]->Forward();
 
-		//cudaMemcpy(hostOutputTensor, deviceOutputTensor, *outputWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(hostOutputTensor, deviceOutputTensor, *outputWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
 	}
 
 	void Backward()
 	{
-		/*FailIf(*batches > maxBatches, "*batches > maxBatches");
+		FailIf(*batches > maxBatches, "*batches > maxBatches");
 
 		cudaMemcpy(deviceOutputGradientTensor, hostOutputGradientTensor, *outputWidth * *batches * sizeof(float), cudaMemcpyHostToDevice);
 
 		for (size_t i = layers.size() - 1; i < layers.size(); i--)
 			layers[i]->Backward();
 
-		cudaMemcpy(hostInputGradientTensor, deviceInputGradientTensor, *inputWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);*/
+		cudaMemcpy(hostInputGradientTensor, deviceInputGradientTensor, *inputWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
 	}
 
 	void PrintParameters()
