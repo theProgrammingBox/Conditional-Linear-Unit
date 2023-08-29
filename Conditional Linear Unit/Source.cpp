@@ -22,13 +22,13 @@ int main()
 	size_t outputWidth = 8;
 
 	NeuralNetwork neuralNetwork;
-	neuralNetwork.AddLayer(new CLU(16, 4, 4, 2, &learningrate, &batches));
-	neuralNetwork.AddLayer(new CLU(16, 1, outputWidth, 1, &learningrate, &batches));
+	neuralNetwork.AddLayer(new CLU(16, 4, 4, 2, &learningrate));
+	neuralNetwork.AddLayer(new CLU(16, 1, outputWidth, 1, &learningrate));
 	neuralNetwork.Initialize
 	(
 		&hostInputTensor, &hostOutputTensor,
 		&hostOutputGradientTensor, &hostInputGradientTensor,
-		&inputWidth, &outputWidth
+		&batches, &inputWidth, &outputWidth
 	);
 	neuralNetwork.PrintParameters();
 
@@ -38,7 +38,7 @@ int main()
 	neuralNetwork.Forward();
 	//neuralNetwork.Backward();
 
-	printf("CLU\n");
+	printf("CLU2\n");
 
 	return 0;
 }

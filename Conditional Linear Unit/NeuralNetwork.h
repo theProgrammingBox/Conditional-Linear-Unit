@@ -49,13 +49,17 @@ struct NeuralNetwork
 	(
 		float** hostInputTensor, float** hostOutputTensor,
 		float** hostOutputGradientTensor, float** hostInputGradientTensor,
-		size_t* inputWidth, size_t* outputWidth
+		size_t* batches, size_t* inputWidth, size_t* outputWidth
 	)
 	{
 		FailIf(*outputWidth != layers.back()->outputWidth, "outputWidth != layers.back()->outputWidth");
 
+		this->batches = batches;
 		this->inputWidth = inputWidth;
 		this->outputWidth = outputWidth;
+
+		for (auto layer : layers)
+			layer->batches = batches;
 
 		gpuMemoryManager.ManageDynamic(&deviceInputTensor, *inputWidth);
 		layers.front()->Initialize(inputWidth, &gpuMemoryManager);
@@ -83,11 +87,12 @@ struct NeuralNetwork
 
 	void Forward()
 	{
-		FailIf(*batches > maxBatches, "*batches > maxBatches");
+		printf("CLU1\n");
+		/*FailIf(*batches > maxBatches, "*batches > maxBatches");
 
 		cudaMemcpy(deviceInputTensor, hostInputTensor, *inputWidth * *batches * sizeof(float), cudaMemcpyHostToDevice);
 
-		/*for (size_t i = 0; i < layers.size(); i++)
+		for (size_t i = 0; i < layers.size(); i++)
 			layers[i]->Forward();*/
 
 		//cudaMemcpy(hostOutputTensor, deviceOutputTensor, *outputWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
@@ -95,14 +100,14 @@ struct NeuralNetwork
 
 	void Backward()
 	{
-		FailIf(*batches > maxBatches, "*batches > maxBatches");
+		/*FailIf(*batches > maxBatches, "*batches > maxBatches");
 
 		cudaMemcpy(deviceOutputGradientTensor, hostOutputGradientTensor, *outputWidth * *batches * sizeof(float), cudaMemcpyHostToDevice);
 
 		for (size_t i = layers.size() - 1; i < layers.size(); i--)
 			layers[i]->Backward();
 
-		cudaMemcpy(hostInputGradientTensor, deviceInputGradientTensor, *inputWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
+		cudaMemcpy(hostInputGradientTensor, deviceInputGradientTensor, *inputWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);*/
 	}
 
 	void PrintParameters()
