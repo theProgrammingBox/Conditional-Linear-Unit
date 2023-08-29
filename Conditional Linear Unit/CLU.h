@@ -33,6 +33,20 @@ struct CLU : public Layer
 	void Forward() override
 	{
 		size_t resultLength = *batches * heads;
+
+		const float alpha = 1.0f;
+		const float beta = 0.0f;
+
+		cublasSgemm
+		(
+			*cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
+			productWidth, *batches, *inputWidth,
+			&alpha,
+			deviceWeightTensor, productWidth,
+			deviceInputTensor, *inputWidth,
+			&beta,
+			deviceProductTensor, productWidth
+		);
 	}
 
 	void Backward() override

@@ -21,14 +21,20 @@ int main()
 
 	NeuralNetwork neuralNetwork
 	(
-		hostInputTensor, hostOutputTensor,
-		hostOutputGradientTensor, hostInputGradientTensor,
+		&hostInputTensor, &hostOutputTensor,
+		&hostOutputGradientTensor, &hostInputGradientTensor,
 		&learningrate, &batches
 	);
 	neuralNetwork.AddLayer(new CLU(16, 4, 4, 2));
 	neuralNetwork.AddLayer(new CLU(16, 1, outputWidth, 1));
 	neuralNetwork.Initialize(&inputWidth, &outputWidth);
 	neuralNetwork.PrintParameters();
+
+	memset(hostInputTensor, 0, sizeof(float) * batches * inputWidth);
+	memset(hostOutputGradientTensor, 0, sizeof(float) * batches * outputWidth);
+
+	/*neuralNetwork.Forward();
+	neuralNetwork.Backward();*/
 
 	printf("CLU\n");
 

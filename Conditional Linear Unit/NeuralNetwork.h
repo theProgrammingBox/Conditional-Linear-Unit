@@ -6,8 +6,8 @@ struct NeuralNetwork
 	cublasHandle_t cublasHandle;
 	GpuMemoryManager gpuMemoryManager;
 
-	float* hostInputTensor, * hostOutputTensor;
-	float* hostOutputGradientTensor, * hostInputGradientTensor;
+	float** hostInputTensor, ** hostOutputTensor;
+	float** hostOutputGradientTensor, ** hostInputGradientTensor;
 	float* learningrate;
 	size_t* batches, * inputWidth;
 
@@ -19,8 +19,8 @@ struct NeuralNetwork
 
 	NeuralNetwork
 	(
-		float* hostInputTensor, float* hostOutputTensor,
-		float* hostOutputGradientTensor, float* hostInputGradientTensor,
+		float** hostInputTensor, float** hostOutputTensor,
+		float** hostOutputGradientTensor, float** hostInputGradientTensor,
 		float* learningrate, size_t* batches
 	) :
 		hostInputTensor(hostInputTensor), hostOutputTensor(hostOutputTensor),
@@ -40,10 +40,10 @@ struct NeuralNetwork
 		cublasStatus_t cublasStatus;
 		cublasStatus = cublasDestroy(cublasHandle);
 		FailIf(cublasStatus != CUBLAS_STATUS_SUCCESS, "cublasDestroy failed");
-		delete[] hostInputTensor;
-		delete[] hostOutputTensor;
-		delete[] hostOutputGradientTensor;
-		delete[] hostInputGradientTensor;
+		delete[] *hostInputTensor;
+		delete[] *hostOutputTensor;
+		delete[] *hostOutputGradientTensor;
+		delete[] *hostInputGradientTensor;
 	}
 
 	void AddLayer(Layer* layer)
@@ -67,20 +67,34 @@ struct NeuralNetwork
 		printf("maxBatches: %zu\n\n", maxBatches);
 
 		// allocating host tensors
-		hostInputTensor = new float[*inputWidth * *batches];
-		hostOutputTensor = new float[*outputWidth * *batches];
-		hostOutputGradientTensor = new float[*outputWidth * *batches];
-		hostInputGradientTensor = new float[*inputWidth * *batches];
+		*hostInputTensor = new float[*inputWidth * maxBatches];
+		*hostOutputTensor = new float[*outputWidth * maxBatches];
+		*hostOutputGradientTensor = new float[*outputWidth * maxBatches];
+		*hostInputGradientTensor = new float[*inputWidth * maxBatches];
 	}
 
 	void Forward()
 	{
 		FailIf(*batches > maxBatches, "*batches > maxBatches");
+
+		cudaMemcpy(deviceInputTensor, *hostInputTensor, *inputWidth * *batches * sizeof(float), cudaMemcpyHostToDevice);
+
+		for (size_t i = 0; i < layers.size(); i++)
+			layers[i]->Forward();
+
+		cudaMemcpy(*hostOutputTensor, deviceOutputTensor, layers.back()->outputWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
 	}
 
 	void Backward()
 	{
 		FailIf(*batches > maxBatches, "*batches > maxBatches");
+
+		cudaMemcpy(deviceOutputGradientTensor, *hostOutputGradientTensor, layers.back()->outputWidth * *batches * sizeof(float), cudaMemcpyHostToDevice);
+
+		for (size_t i = layers.size() - 1; i < layers.size(); i--)
+			layers[i]->Backward();
+
+		cudaMemcpy(*hostInputGradientTensor, deviceInputGradientTensor, *inputWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
 	}
 
 	void PrintParameters()

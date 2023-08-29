@@ -119,18 +119,18 @@ struct GpuMemoryManager
 					size = memoryPtr->size;
 					dynamicSize = memoryPtr->dynamicSize;
 				}
-			printf("Smallest ratio: %f\n", smallestRatio);
+			/*printf("Smallest ratio: %f\n", smallestRatio);
 			printf("Largest ratio: %f\n", largestRatio);
 			printf("size: %zu\n", size);
-			printf("dynamicSize: %zu\n\n", dynamicSize);
+			printf("dynamicSize: %zu\n\n", dynamicSize);*/
 
 			if (smallestRatio > largestRatio)
 			{
-				printf("New best ratio: %f\n", smallestRatio);
 				if (dynamicSize > 0)
 					largestN = size / dynamicSize;
 				largestRatio = smallestRatio;
 
+				printf("New best ratio: %f\n", smallestRatio);
 				printf("largestN: %zu\n", largestN);
 				printf("left over: %zu\n\n", size - largestN * dynamicSize);
 
