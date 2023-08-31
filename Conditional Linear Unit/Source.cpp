@@ -2,8 +2,6 @@
 
 /*
 TODO:
-- Add a Layers init params after allocating memory
-
 - Work on backward pass
 -- add their grad tensors
 
