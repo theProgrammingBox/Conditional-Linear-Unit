@@ -18,6 +18,13 @@ void FailIf(bool condition, const char* message)
 	}
 }
 
+float InvSqrt(float number)
+{
+	long i = 0x5F1FFFF9 - (*(long*)&number >> 1);
+	float tmp = *(float*)&i;
+	return tmp * 0.703952253f * (2.38924456f - number * tmp * tmp);
+}
+
 void PrintTensorf32(size_t width, size_t height, float* arr, const char* label = "Tensor", size_t majorStride = 0, size_t tensorSize = 0, size_t batchCount = 1)
 {
 	if (majorStride == 0)

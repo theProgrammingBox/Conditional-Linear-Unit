@@ -39,17 +39,18 @@ struct CLU : public Layer
 	{
 		size_t resultLength = *batches * heads;
 
-		const float alpha = 1.0f;
-		const float beta = 0.0f;
+		float invSqrtInputWidth = InvSqrt(*inputWidth);
+		float invSqrtHiddenWidth = InvSqrt(hiddenWidth);
+		float zero = 0.0f;
 
 		cublasSgemm
 		(
 			*cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
 			productWidth, *batches, *inputWidth,
-			&alpha,
+			&invSqrtInputWidth,
 			deviceWeightTensor, productWidth,
 			deviceInputTensor, *inputWidth,
-			&beta,
+			&zero,
 			deviceProductTensor, productWidth
 		);
 
@@ -86,10 +87,10 @@ struct CLU : public Layer
 		(
 			*cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
 			resultWidth, hiddenHeight, hiddenWidth,
-			&alpha,
+			&invSqrtHiddenWidth,
 			deviceProductTensor + nonlinearWidth, resultWidth, integratedWidth,
 			deviceProductTensor, hiddenWidth, integratedWidth,
-			&beta,
+			&zero,
 			deviceOutputTensor, resultWidth, resultSize,
 			resultLength
 		);

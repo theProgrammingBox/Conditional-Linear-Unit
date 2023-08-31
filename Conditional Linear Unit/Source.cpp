@@ -2,13 +2,11 @@
 
 /*
 TODO:
-- Work on forward pass
--- Work on forward scalars
-- Move gpu rand to a new header file
 - Work on backward pass
 -- add their dev tensors
 - rework data passing
 -- use references if possible
+- Move gpu rand to a new header file
 */
 
 int main()
