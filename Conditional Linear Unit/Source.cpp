@@ -34,18 +34,18 @@ int main()
 	);
 	neuralNetwork.PrintParameters();
 
-	//memset(hostInputTensor, 0, sizeof(float) * batches * inputWidth);
+
 	for (size_t i = 0; i < batches * inputWidth; i++)
 		hostInputTensor[i] = i / float(batches * inputWidth);
 
 	neuralNetwork.Forward();
 
 
-	//memset(hostOutputGradientTensor, 0, sizeof(float) * batches * outputWidth);
 	for (size_t i = 0; i < batches * outputWidth; i++)
 		hostOutputGradientTensor[i] = i / float(batches * outputWidth);
 
-	//neuralNetwork.Backward();
+	neuralNetwork.Backward();
+
 
 	printf("CLU2\n");
 
