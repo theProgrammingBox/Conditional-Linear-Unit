@@ -3,7 +3,7 @@
 
 struct CLU : public Layer
 {
-	size_t hiddenHeight, hiddenWidth, resultWidth, heads;
+	size_t hiddenWidth, hiddenHeight, resultWidth, heads;
 	size_t nonlinearWidth, integratedWidth, productWidth, resultSize;
 
 	float* deviceWeightTensor, * deviceBiasTensor;
@@ -81,6 +81,24 @@ struct CLU : public Layer
 		cudaMemcpy(hostProductTensor, deviceProductTensor, productWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
 
 		PrintTensorf32(productWidth, *batches, hostProductTensor, "Product Tensor after binary");
+
+		cublasSgemmStridedBatched
+		(
+			*cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
+			resultWidth, hiddenHeight, hiddenWidth,
+			&alpha,
+			deviceProductTensor + nonlinearWidth, resultWidth, integratedWidth,
+			deviceProductTensor, hiddenWidth, integratedWidth,
+			&beta,
+			deviceOutputTensor, resultWidth, resultSize,
+			resultLength
+		);
+
+		float* hostOutputTensor = new float[outputWidth * *batches];
+
+		cudaMemcpy(hostOutputTensor, deviceOutputTensor, outputWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
+
+		PrintTensorf32(outputWidth, *batches, hostOutputTensor, "Output Tensor");
 	}
 
 	void Backward() override
