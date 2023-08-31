@@ -54,6 +54,21 @@ __global__ void gpuRandFunc(float* arr, uint32_t size, uint32_t seed1, uint32_t 
 	}
 }
 
+__global__ void gpuAddFunc(float* arr, float* output, uint32_t width, uint32_t height)
+{
+	uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+	if (idx < width)
+	{
+		for (uint32_t i = 0; i < height; i++)
+			output[i * width + idx] += arr[idx];
+	}
+}
+
+void gpuAdd(float* arr, float* output, uint32_t width, uint32_t height)
+{
+	gpuAddFunc << <ceil(0.0009765625f * width), 1024 >> > (arr, output, width, height);
+}
+
 struct GpuRand
 {
 	uint32_t seed1, seed2;

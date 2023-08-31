@@ -61,6 +61,16 @@ struct CLU : public Layer
 
 		PrintTensorf32(*inputWidth, *batches, hostInputTensor, "Input Tensor");
 		PrintTensorf32(productWidth, *batches, hostProductTensor, "Product Tensor");
+
+		gpuAdd
+		(
+			deviceBiasTensor, deviceProductTensor,
+			productWidth, *batches
+		);
+
+		cudaMemcpy(hostProductTensor, deviceProductTensor, productWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
+
+		PrintTensorf32(productWidth, *batches, hostProductTensor, "Product Tensor with bias");
 	}
 
 	void Backward() override
