@@ -50,7 +50,7 @@ __global__ void gpuRandFunc(float* arr, uint32_t size, uint32_t seed1, uint32_t 
 		index *= 0x24F66AC9;
 		index ^= index >> 16;
 
-		arr[idx] = index * 0.00000000023283064365386962890625f;
+		arr[idx] = int32_t(index) * 0.000000000465661287524579f;
 	}
 }
 

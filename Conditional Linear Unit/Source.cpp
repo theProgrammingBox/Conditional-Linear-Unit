@@ -3,8 +3,6 @@
 /*
 TODO:
 - Work on forward pass
--- Work on gpu rand kernel range
--- add custom add and activation kernels
 -- Work on forward scalars
 - Move gpu rand to a new header file
 - Work on backward pass
