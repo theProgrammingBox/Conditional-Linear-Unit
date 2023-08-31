@@ -5,6 +5,7 @@ struct NeuralNetwork
 {
 	cublasHandle_t cublasHandle;
 	GpuMemoryManager gpuMemoryManager;
+	GpuRand gpuRand;
 
 	float* hostInputTensor, * hostOutputTensor;
 	float* hostOutputGradientTensor, * hostInputGradientTensor;
@@ -62,16 +63,20 @@ struct NeuralNetwork
 			layer->batches = batches;
 
 		gpuMemoryManager.ManageDynamic(&deviceInputTensor, *inputWidth);
-		layers.front()->Initialize(inputWidth, &gpuMemoryManager);
+		layers.front()->ProvideAllocationDetails(inputWidth, &gpuMemoryManager);
 		for (size_t i = 1; i < layers.size(); i++)
-			layers[i]->Initialize(&layers[i - 1]->outputWidth, &gpuMemoryManager);
+			layers[i]->ProvideAllocationDetails(&layers[i - 1]->outputWidth, &gpuMemoryManager);
 
 		gpuMemoryManager.Allocate(maxBatches);
 		printf("maxBatches: %zu\n\n", maxBatches);
 
 		layers.front()->deviceInputTensor = deviceInputTensor;
+		layers.front()->InitializeParameters(&gpuRand);
 		for (size_t i = 1; i < layers.size(); i++)
+		{
 			layers[i]->deviceInputTensor = layers[i - 1]->deviceOutputTensor;
+			layers[i]->InitializeParameters(&gpuRand);
+		}
 
 		this->hostInputTensor = new float[*inputWidth * maxBatches];
 		this->hostOutputTensor = new float[*outputWidth * maxBatches];

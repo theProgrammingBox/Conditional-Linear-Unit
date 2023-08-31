@@ -2,11 +2,18 @@
 
 /*
 TODO:
+- Add a Layers init params after allocating memory
+
 - Work on backward pass
--- add their dev tensors
-- rework data passing
+-- add their grad tensors
+
+- make everything cleaner
+-- new drawing using updated names (not code related)
 -- use references if possible
-- Move gpu rand to a new header file
+-- pass non pointers as not planning to update widths after init
+-- seperate ProvideAllocationDetails into connect dimensions and report tensor details
+-- comment out debug prints
+-- Move gpu rand to a new header file
 */
 
 int main()
@@ -32,9 +39,14 @@ int main()
 	//memset(hostInputTensor, 0, sizeof(float) * batches * inputWidth);
 	for (size_t i = 0; i < batches * inputWidth; i++)
 		hostInputTensor[i] = i / float(batches * inputWidth);
-	memset(hostOutputGradientTensor, 0, sizeof(float) * batches * outputWidth);
 
 	neuralNetwork.Forward();
+
+
+	//memset(hostOutputGradientTensor, 0, sizeof(float) * batches * outputWidth);
+	for (size_t i = 0; i < batches * outputWidth; i++)
+		hostOutputGradientTensor[i] = i / float(batches * outputWidth);
+
 	//neuralNetwork.Backward();
 
 	printf("CLU2\n");

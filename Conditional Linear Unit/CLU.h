@@ -24,7 +24,7 @@ struct CLU : public Layer
 		outputWidth = resultSize * heads;
 	}
 
-	void Initialize(size_t* inputWidth, GpuMemoryManager* gpuMemoryManager)
+	void ProvideAllocationDetails(size_t* inputWidth, GpuMemoryManager* gpuMemoryManager)
 	{
 		this->inputWidth = inputWidth;
 
@@ -33,6 +33,12 @@ struct CLU : public Layer
 
 		gpuMemoryManager->ManageDynamic(&deviceProductTensor, productWidth);
 		gpuMemoryManager->ManageDynamic(&deviceOutputTensor, outputWidth);
+	}
+
+	void InitializeParameters(GpuRand* gpuRand)
+	{
+		gpuRand->Randomize(deviceWeightTensor, *inputWidth * productWidth);
+		gpuRand->Randomize(deviceBiasTensor, productWidth);
 	}
 
 	void Forward() override

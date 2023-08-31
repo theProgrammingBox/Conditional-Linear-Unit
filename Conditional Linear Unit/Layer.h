@@ -11,7 +11,8 @@ struct Layer
 	float* deviceOutputGradientTensor, * deviceInputGradientTensor;
 
 	Layer(float* learningrate) : learningrate(learningrate) {}
-	virtual void Initialize(size_t* inputWidth, GpuMemoryManager* gpuMemoryManager) = 0;
+	virtual void ProvideAllocationDetails(size_t* inputWidth, GpuMemoryManager* gpuMemoryManager) = 0;
+	virtual void InitializeParameters(GpuRand* gpuRand) = 0;
 	virtual void Forward() = 0;
 	virtual void Backward() = 0;
 	virtual void PrintParameters() = 0;
