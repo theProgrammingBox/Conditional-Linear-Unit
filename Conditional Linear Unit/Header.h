@@ -69,6 +69,23 @@ void gpuAdd(float* arr, float* output, uint32_t width, uint32_t height)
 	gpuAddFunc << <ceil(0.0009765625f * width), 1024 >> > (arr, output, width, height);
 }
 
+__global__ void gpuBinaryFunc(float* arr, uint32_t width, uint32_t height, uint32_t majorStride)
+{
+	uint32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+	if (idx < width * height)
+	{
+		uint32_t wx = idx % width;
+		uint32_t hx = idx / width;
+		uint32_t index = hx * majorStride + wx;
+		arr[index] = arr[index] > 0.0f ? 1.0f : 0.0f;
+	}
+}
+
+void gpuBinary(float* arr, uint32_t width, uint32_t height, uint32_t majorStride)
+{
+	gpuBinaryFunc << <ceil(0.0009765625f * width * height), 1024 >> > (arr, width, height, majorStride);
+}
+
 struct GpuRand
 {
 	uint32_t seed1, seed2;

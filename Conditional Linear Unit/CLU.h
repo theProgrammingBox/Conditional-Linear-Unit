@@ -71,6 +71,16 @@ struct CLU : public Layer
 		cudaMemcpy(hostProductTensor, deviceProductTensor, productWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
 
 		PrintTensorf32(productWidth, *batches, hostProductTensor, "Product Tensor with bias");
+
+		gpuBinary
+		(
+			deviceProductTensor,
+			nonlinearWidth, *batches, productWidth
+		);
+
+		cudaMemcpy(hostProductTensor, deviceProductTensor, productWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
+
+		PrintTensorf32(productWidth, *batches, hostProductTensor, "Product Tensor after binary");
 	}
 
 	void Backward() override
