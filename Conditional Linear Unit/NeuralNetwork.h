@@ -124,5 +124,8 @@ struct NeuralNetwork
 			layers[i]->PrintParameters();
 	}
 
-	void 
+	void ConnectDimentions()
+	{
+		// Connect dimentions
+	}
 };
