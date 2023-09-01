@@ -2,16 +2,18 @@
 
 /*
 TODO:
-- Work on backward pass
--- add their grad tensors
-
-- make everything cleaner
--- new drawing using updated names (not code related)
+- redesign and make everything cleaner
 -- use references if possible
 -- pass non pointers as not planning to update widths after init
--- seperate ProvideAllocationDetails into connect dimensions and report tensor details
+-- allow user to pass device tensors
+-- allow user to choose to copy device tensors to host
+
 -- comment out debug prints
+-- new drawing using updated names (not code related)
 -- Move gpu rand to a new header file
+
+- Work on backward pass
+-- add their grad tensors
 */
 
 int main()

@@ -35,7 +35,7 @@ struct CLU : public Layer
 		expDecayVar = 1.0f;
 	}
 
-	void ProvideAllocationDetails(size_t* inputWidth, GpuMemoryManager* gpuMemoryManager)
+	void DescribeTensorDetails(size_t* inputWidth, GpuMemoryManager* gpuMemoryManager)
 	{
 		this->inputWidth = inputWidth;
 

@@ -1,6 +1,9 @@
 #pragma once
 #include "CLU.cuh"
 
+// allow user to pass device tensors
+// allow user to choose to copy device tensors to host
+
 struct NeuralNetwork
 {
 	// passed to all layers as pointers
@@ -16,7 +19,7 @@ struct NeuralNetwork
 	float* deviceOutputGradientTensor, * deviceInputGradientTensor;
 
 	// initialized/shared with user
-	size_t maxBatches;
+	size_t maxInputHeight;
 	float* hostInputTensor, * hostOutputTensor;
 	float* hostOutputGradientTensor, * hostInputGradientTensor;
 
@@ -67,37 +70,42 @@ struct NeuralNetwork
 		this->inputWidth = inputWidth;
 		this->outputWidth = outputWidth;
 
-		// connect layer dimensions
+		// connect layer dimensions and describe tensor details to memory manager
+		gpuMemoryManager.ManageDynamic(&deviceInputTensor, inputWidth);
 		layers.front()->inputWidth = inputWidth;
+		layers.front()->DescribeTensorDetails();
 		for (size_t i = 1; i < layers.size(); i++)
+		{
 			layers[i]->inputWidth = layers[i - 1]->outputWidth;
+			layers[i]->DescribeTensorDetails();
+		}
 
-		gpuMemoryManager.ManageDynamic(&deviceInputTensor, *inputWidth);
-		layers.front()->ProvideAllocationDetails(inputWidth, &gpuMemoryManager);
-		for (size_t i = 1; i < layers.size(); i++)
-			layers[i]->ProvideAllocationDetails(&layers[i - 1]->outputWidth, &gpuMemoryManager);
+		// memory manager allocates static and dynamic memory
+		gpuMemoryManager.Allocate(maxInputHeight);
+		printf("maxInputHeight: %zu\n\n", maxInputHeight);
 
-		gpuMemoryManager.Allocate(maxBatches);
-		printf("maxBatches: %zu\n\n", maxBatches);
-
+		// connect layer tensors and initialize parameters
 		layers.front()->deviceInputTensor = deviceInputTensor;
-		layers.front()->InitializeParameters(&gpuRand);
+		layers.front()->InitializeParameters();
 		for (size_t i = 1; i < layers.size(); i++)
 		{
 			layers[i]->deviceInputTensor = layers[i - 1]->deviceOutputTensor;
-			layers[i]->InitializeParameters(&gpuRand);
+			layers[i]->InitializeParameters();
 		}
 
-		this->hostInputTensor = new float[*inputWidth * maxBatches];
-		this->hostOutputTensor = new float[*outputWidth * maxBatches];
-		this->hostOutputGradientTensor = new float[*outputWidth * maxBatches];
-		this->hostInputGradientTensor = new float[*inputWidth * maxBatches];
+		// initialize host tensors
+		this->hostInputTensor = new float[*inputWidth * maxInputHeight];
+		this->hostOutputTensor = new float[*outputWidth * maxInputHeight];
+		this->hostOutputGradientTensor = new float[*outputWidth * maxInputHeight];
+		this->hostInputGradientTensor = new float[*inputWidth * maxInputHeight];
 
-		*hostInputTensor = this->hostInputTensor;
-		*hostOutputTensor = this->hostOutputTensor;
-		*hostOutputGradientTensor = this->hostOutputGradientTensor;
-		*hostInputGradientTensor = this->hostInputGradientTensor;
+		// give host tensors to user
+		hostInputTensor = this->hostInputTensor;
+		hostOutputTensor = this->hostOutputTensor;
+		hostOutputGradientTensor = this->hostOutputGradientTensor;
+		hostInputGradientTensor = this->hostInputGradientTensor;
 
+		// set interface tensors for 
 		deviceInputTensor = layers.front()->deviceInputTensor;
 		deviceOutputTensor = layers.back()->deviceOutputTensor;
 		deviceOutputGradientTensor = layers.back()->deviceOutputGradientTensor;
@@ -106,7 +114,7 @@ struct NeuralNetwork
 
 	void Forward(size_t inputHeight)
 	{
-		FailIf(*batches > maxBatches, "*batches > maxBatches");
+		FailIf(*batches > maxInputHeight, "*batches > maxInputHeight");
 
 		cudaMemcpy(deviceInputTensor, hostInputTensor, *inputWidth * *batches * sizeof(float), cudaMemcpyHostToDevice);
 
@@ -118,7 +126,7 @@ struct NeuralNetwork
 
 	void Backward(size_t inputHeight, float learningRate)
 	{
-		FailIf(*batches > maxBatches, "*batches > maxBatches");
+		FailIf(*batches > maxInputHeight, "*batches > maxInputHeight");
 
 		cudaMemcpy(deviceOutputGradientTensor, hostOutputGradientTensor, *outputWidth * *batches * sizeof(float), cudaMemcpyHostToDevice);
 

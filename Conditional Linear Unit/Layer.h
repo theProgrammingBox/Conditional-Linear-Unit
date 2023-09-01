@@ -15,7 +15,7 @@ struct Layer
 	float* deviceInputTensor, * deviceOutputTensor;
 	float* deviceOutputGradientTensor, * deviceInputGradientTensor;
 
-	virtual void ProvideAllocationDetails() = 0;
+	virtual void DescribeTensorDetails() = 0;
 	virtual void InitializeParameters() = 0;
 	virtual void Forward() = 0;
 	virtual void Backward() = 0;
