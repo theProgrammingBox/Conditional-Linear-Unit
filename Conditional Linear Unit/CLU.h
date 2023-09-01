@@ -20,10 +20,10 @@ struct CLU : public Layer
 	CLU
 	(
 		size_t hiddenWidth, size_t hiddenHeight, size_t resultWidth, size_t heads,
-		float* learningrate
+		float* learningRate
 	) :
 		hiddenWidth(hiddenWidth), hiddenHeight(hiddenHeight), resultWidth(resultWidth), heads(heads),
-		Layer(learningrate)
+		Layer(learningRate)
 	{
 		nonlinearWidth = hiddenHeight * hiddenWidth;
 		integratedWidth = nonlinearWidth + hiddenWidth * resultWidth;

@@ -32,7 +32,7 @@ struct GpuMemoryManager
 		}
 	}
 
-	void Init()
+	void MapGpuMemory()
 	{
 		printf("Initializing GPU memory manager...\n\n");
 		size_t freeMem, totalMem;

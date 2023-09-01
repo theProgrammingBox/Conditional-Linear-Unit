@@ -18,14 +18,14 @@ int main()
 {
 	float* hostInputTensor, * hostOutputTensor;
 	float* hostOutputGradientTensor, * hostInputGradientTensor;
-	float learningrate = 0.01f;
+	float learningRate = 0.01f;
 	size_t batches = 16;
 	size_t inputWidth = 16;
 	size_t outputWidth = 8;
 
 	NeuralNetwork neuralNetwork;
-	neuralNetwork.AddLayer(new CLU(16, 4, 4, 2, &learningrate));
-	neuralNetwork.AddLayer(new CLU(16, 1, outputWidth, 1, &learningrate));
+	neuralNetwork.AddLayer(new CLU(16, 4, 4, 2, &learningRate));
+	neuralNetwork.AddLayer(new CLU(16, 1, outputWidth, 1, &learningRate));
 	neuralNetwork.Initialize
 	(
 		&hostInputTensor, &hostOutputTensor,

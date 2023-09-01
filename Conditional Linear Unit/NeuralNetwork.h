@@ -3,19 +3,22 @@
 
 struct NeuralNetwork
 {
+	// passed to all layers as pointers
 	cublasHandle_t cublasHandle;
 	GpuMemoryManager gpuMemoryManager;
 	GpuRand gpuRand;
+	size_t inputHeight;
+	float learningRate;
 
-	float* hostInputTensor, * hostOutputTensor;
-	float* hostOutputGradientTensor, * hostInputGradientTensor;
-	float* learningrate;
-	size_t* batches;
-	size_t* inputWidth, * outputWidth;
-
+	// initialized/shared with layers
+	size_t inputWidth, outputWidth;
 	float* deviceInputTensor, * deviceOutputTensor;
 	float* deviceOutputGradientTensor, * deviceInputGradientTensor;
+
+	// initialized/shared with user
 	size_t maxBatches;
+	float* hostInputTensor, * hostOutputTensor;
+	float* hostOutputGradientTensor, * hostInputGradientTensor;
 
 	std::vector<Layer*> layers;
 
@@ -26,7 +29,7 @@ struct NeuralNetwork
 		cublasStatus = cublasCreate(&cublasHandle);
 		FailIf(cublasStatus != CUBLAS_STATUS_SUCCESS, "cublasCreate failed");
 
-		gpuMemoryManager.Init();
+		gpuMemoryManager.MapGpuMemory();
 	}
 
 	~NeuralNetwork()
@@ -34,6 +37,7 @@ struct NeuralNetwork
 		cublasStatus_t cublasStatus;
 		cublasStatus = cublasDestroy(cublasHandle);
 		FailIf(cublasStatus != CUBLAS_STATUS_SUCCESS, "cublasDestroy failed");
+
 		delete[] hostInputTensor;
 		delete[] hostOutputTensor;
 		delete[] hostOutputGradientTensor;
@@ -43,24 +47,30 @@ struct NeuralNetwork
 	void AddLayer(Layer* layer)
 	{
 		layer->cublasHandle = &cublasHandle;
-		layers.push_back(layer);
+		layer->gpuMemoryManager = &gpuMemoryManager;
+		layer->gpuRand = &gpuRand;
+		layer->inputHeight = &inputHeight;
+		layer->learningRate = &learningRate;
+
+		layers.emplace_back(layer);
 	}
 
 	void Initialize
 	(
-		float** hostInputTensor, float** hostOutputTensor,
-		float** hostOutputGradientTensor, float** hostInputGradientTensor,
-		size_t* batches, size_t* inputWidth, size_t* outputWidth
+		size_t inputWidth, size_t outputWidth,
+		float*& hostInputTensor, float*& hostOutputTensor,
+		float*& hostOutputGradientTensor, float*& hostInputGradientTensor
 	)
 	{
-		FailIf(*outputWidth != layers.back()->outputWidth, "outputWidth != layers.back()->outputWidth");
+		FailIf(outputWidth != layers.back()->outputWidth, "outputWidth != layers.back()->outputWidth");
 
-		this->batches = batches;
 		this->inputWidth = inputWidth;
 		this->outputWidth = outputWidth;
 
-		for (auto layer : layers)
-			layer->batches = batches;
+		// connect layer dimensions
+		layers.front()->inputWidth = inputWidth;
+		for (size_t i = 1; i < layers.size(); i++)
+			layers[i]->inputWidth = layers[i - 1]->outputWidth;
 
 		gpuMemoryManager.ManageDynamic(&deviceInputTensor, *inputWidth);
 		layers.front()->ProvideAllocationDetails(inputWidth, &gpuMemoryManager);
@@ -94,7 +104,7 @@ struct NeuralNetwork
 		deviceInputGradientTensor = layers.front()->deviceInputGradientTensor;
 	}
 
-	void Forward()
+	void Forward(size_t inputHeight)
 	{
 		FailIf(*batches > maxBatches, "*batches > maxBatches");
 
@@ -106,7 +116,7 @@ struct NeuralNetwork
 		cudaMemcpy(hostOutputTensor, deviceOutputTensor, *outputWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
 	}
 
-	void Backward()
+	void Backward(size_t inputHeight, float learningRate)
 	{
 		FailIf(*batches > maxBatches, "*batches > maxBatches");
 

@@ -3,16 +3,20 @@
 
 struct Layer
 {
+	// neural network init
 	cublasHandle_t* cublasHandle;
+	GpuMemoryManager* gpuMemoryManager;
+	GpuRand* gpuRand;
+	size_t* inputHeight;
+	float* learningRate;
 
-	size_t* batches, * inputWidth, outputWidth;
-	float* learningrate;
+	// initialized/shared with layers
+	size_t inputWidth, outputWidth;
 	float* deviceInputTensor, * deviceOutputTensor;
 	float* deviceOutputGradientTensor, * deviceInputGradientTensor;
 
-	Layer(float* learningrate) : learningrate(learningrate) {}
-	virtual void ProvideAllocationDetails(size_t* inputWidth, GpuMemoryManager* gpuMemoryManager) = 0;
-	virtual void InitializeParameters(GpuRand* gpuRand) = 0;
+	virtual void ProvideAllocationDetails() = 0;
+	virtual void InitializeParameters() = 0;
 	virtual void Forward() = 0;
 	virtual void Backward() = 0;
 	virtual void PrintParameters() = 0;
