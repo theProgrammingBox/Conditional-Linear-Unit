@@ -9,6 +9,13 @@ struct CLU : public Layer
 	float* deviceWeightTensor, * deviceBiasTensor;
 	float* deviceProductTensor;
 
+	float* deviceWeightGradTensor, * deviceBiasGradTensor;
+	float* deviceProductGradTensor;
+
+	float beta1, beta2, epsilon;
+	float* deviceWeightGradMeanTensor, * deviceWeightGradVarTensor;
+	float* deviceBiasGradMeanTensor, * deviceBiasGradVarTensor;
+
 	CLU
 	(
 		size_t hiddenWidth, size_t hiddenHeight, size_t resultWidth, size_t heads,
