@@ -30,6 +30,9 @@ struct CLU : public Layer
 		productWidth = integratedWidth * heads;
 		resultSize = hiddenHeight * resultWidth;
 		outputWidth = resultSize * heads;
+
+		expDecayMean = 1.0f;
+		expDecayVar = 1.0f;
 	}
 
 	void ProvideAllocationDetails(size_t* inputWidth, GpuMemoryManager* gpuMemoryManager)
@@ -41,12 +44,30 @@ struct CLU : public Layer
 
 		gpuMemoryManager->ManageDynamic(&deviceProductTensor, productWidth);
 		gpuMemoryManager->ManageDynamic(&deviceOutputTensor, outputWidth);
+
+		gpuMemoryManager->ManageStatic(&deviceWeightGradTensor, *inputWidth * productWidth);
+		gpuMemoryManager->ManageStatic(&deviceBiasGradTensor, productWidth);
+
+		gpuMemoryManager->ManageDynamic(&deviceProductGradTensor, productWidth);
+		gpuMemoryManager->ManageDynamic(&deviceInputGradTensor, *inputWidth);
+
+		gpuMemoryManager->ManageStatic(&deviceWeightGradMeanTensor, *inputWidth * productWidth);
+		gpuMemoryManager->ManageStatic(&deviceWeightGradVarTensor, *inputWidth * productWidth);
+
+		gpuMemoryManager->ManageStatic(&deviceBiasGradMeanTensor, productWidth);
+		gpuMemoryManager->ManageStatic(&deviceBiasGradVarTensor, productWidth);
 	}
 
 	void InitializeParameters(GpuRand* gpuRand)
 	{
 		gpuRand->Randomize(deviceWeightTensor, *inputWidth * productWidth);
 		gpuRand->Randomize(deviceBiasTensor, productWidth);
+
+		cudaMemset(deviceWeightGradMeanTensor, 0, *inputWidth * productWidth * sizeof(float));
+		cudaMemset(deviceWeightGradVarTensor, 0, *inputWidth * productWidth * sizeof(float));
+
+		cudaMemset(deviceBiasGradMeanTensor, 0, productWidth * sizeof(float));
+		cudaMemset(deviceBiasGradVarTensor, 0, productWidth * sizeof(float));
 	}
 
 	void Forward() override
