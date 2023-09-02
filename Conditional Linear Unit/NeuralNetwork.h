@@ -155,6 +155,13 @@ struct NeuralNetwork
 		{
 			copy to dev
 		}
+
+		forward
+
+		if (hostOutput != nullptr)
+		{
+			copy to host
+		}
 		*/
 	}
 
