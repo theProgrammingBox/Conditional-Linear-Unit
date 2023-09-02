@@ -3,10 +3,10 @@
 /*
 TODO:
 - redesign and make everything cleaner
--- use references if possible
--- pass non pointers as not planning to update widths after init
 -- allow user to pass device tensors
 -- allow user to choose to copy device tensors to host
+-- use references if possible
+-- pass non pointers as not planning to update widths after init
 
 -- comment out debug prints
 -- new drawing using updated names (not code related)

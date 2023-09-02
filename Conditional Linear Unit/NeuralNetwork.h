@@ -114,26 +114,22 @@ struct NeuralNetwork
 
 	void Forward(size_t inputHeight)
 	{
-		FailIf(*batches > maxInputHeight, "*batches > maxInputHeight");
-
-		cudaMemcpy(deviceInputTensor, hostInputTensor, *inputWidth * *batches * sizeof(float), cudaMemcpyHostToDevice);
+		this->inputHeight = inputHeight;
+		FailIf(inputHeight > maxInputHeight, "inputHeight > maxInputHeight");
+		cudaMemcpy(deviceInputTensor, hostInputTensor, inputWidth * inputHeight * sizeof(float), cudaMemcpyHostToDevice);
 
 		for (size_t i = 0; i < layers.size(); i++)
 			layers[i]->Forward();
-
-		cudaMemcpy(hostOutputTensor, deviceOutputTensor, *outputWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
 	}
 
-	void Backward(size_t inputHeight, float learningRate)
+	void Backward(float learningRate)
 	{
-		FailIf(*batches > maxInputHeight, "*batches > maxInputHeight");
-
-		cudaMemcpy(deviceOutputGradientTensor, hostOutputGradientTensor, *outputWidth * *batches * sizeof(float), cudaMemcpyHostToDevice);
+		this->learningRate = learningRate;
+		FailIf(inputHeight > maxInputHeight, "inputHeight > maxInputHeight");
+		cudaMemcpy(deviceOutputGradientTensor, hostOutputGradientTensor, outputWidth * inputHeight * sizeof(float), cudaMemcpyHostToDevice);
 
 		for (size_t i = layers.size() - 1; i < layers.size(); i--)
 			layers[i]->Backward();
-
-		cudaMemcpy(hostInputGradientTensor, deviceInputGradientTensor, *inputWidth * *batches * sizeof(float), cudaMemcpyDeviceToHost);
 	}
 
 	void PrintParameters()
@@ -142,8 +138,35 @@ struct NeuralNetwork
 			layers[i]->PrintParameters();
 	}
 
-	void ConnectDimentions()
+	void Planning()
 	{
-		// Connect dimentions
+		/*
+		hostInput = nullptr;
+		deviceInput = deviceInput;
+		if (deviceInput == nullptr)
+		{
+			add dev to manager
+			init host
+		}
+
+		// connect stuff
+
+		if (hostInput != nullptr)
+		{
+			copy to dev
+		}
+		*/
+	}
+
+	float* GetHostOutputTensor()
+	{
+		cudaMemcpy(hostOutputTensor, deviceOutputTensor, outputWidth * inputHeight * sizeof(float), cudaMemcpyDeviceToHost);
+		return hostOutputTensor;
+	}
+
+	float* GetHostInputGradientTensor()
+	{
+		cudaMemcpy(hostInputGradientTensor, deviceInputGradientTensor, inputWidth * inputHeight * sizeof(float), cudaMemcpyDeviceToHost);
+		return hostInputGradientTensor;
 	}
 };
